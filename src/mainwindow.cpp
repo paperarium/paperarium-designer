@@ -8,7 +8,7 @@
  * @param parent
  */
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+    : CFramelessWindow(parent)
     , ui(new Ui::MainWindow)
 {
     // initialize the UI
@@ -24,8 +24,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     // window flags
 //    setWindowFlags(Qt::FramelessWindowHint);
-    // initial size of the window
-    setFixedSize(1100, 650);
 }
 
 MainWindow::~MainWindow()

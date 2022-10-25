@@ -1,58 +1,69 @@
+# Use recommended CMake version and initialize project
 cmake_minimum_required(VERSION 3.5)
-
 project(PaperariumDesign VERSION 0.1 LANGUAGES CXX)
 
+# Set CMake variables
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Turn on Qt-related auto compiler options
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC_SEARCH_PATHS ui/)
+set(AUTOMOC_PATH_PREFIX ON)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+# Include Qt packages
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
 
-set(TS_FILES PaperariumDesign_en_US.ts)
+# --------------------------------- SOURCES --------------------------------- #
 
-set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-        ${TS_FILES}
-)
+# Locate different types of files
+file(GLOB PAPERARIUM_DESIGN_SRCS src/*.cpp)
+file(GLOB PAPERARIUM_DESIGN_HEADERS include/*.h lib/*/*.h)
+file(GLOB PAPERARIUM_DESIGN_UIS ui/*.ui)
+file(GLOB PAPERARIUM_DESIGN_TSS lang/*.ts)
+# Concatenate all into project sources
+set(PAPERARIUM_DESIGN_ALL_SOURCES
+    main.cpp
+    ${PAPERARIUM_DESIGN_SRCS}
+    ${PAPERARIUM_DESIGN_HEADERS}
+    ${PAPERARIUM_DESIGN_UIS}
+    ${PAPERARIUM_DESIGN_TSS})
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(PaperariumDesign
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
-    )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET PaperariumDesign APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
-
-    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+# On Mac, add the Objective-C frameless window object instead
+if(APPLE)
+    set(PAPERARIUM_DESIGN_ALL_SOURCES
+        ${PAPERARIUM_DESIGN_ALL_SOURCES}
+        lib/framelesswindow/framelesswindow.mm)
 else()
-    if(ANDROID)
-        add_library(PaperariumDesign SHARED
-            ${PROJECT_SOURCES}
-        )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
-    else()
-        add_executable(PaperariumDesign
-            ${PROJECT_SOURCES}
-        )
-    endif()
-
-    qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+    set(PAPERARIUM_DESIGN_ALL_SOURCES
+        ${PAPERARIUM_DESIGN_ALL_SOURCES}
+        lib/framelesswindow/framelesswindow.cpp)
 endif()
 
+# ------------------------------- EXECUTION -------------------------------- #
+
+# Add executable as PaperariumDesign
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_add_executable(PaperariumDesign MANUAL_FINALIZATION ${PAPERARIUM_DESIGN_ALL_SOURCES})
+    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${PAPERARIUM_DESIGN_TSS})
+else()
+    add_executable(PaperariumDesign ${PAPERARIUM_DESIGN_ALL_SOURCES})
+    qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${PAPERARIUM_DESIGN_TSS})
+endif()
+
+# Link libraries + include directories
+target_include_directories(PaperariumDesign PRIVATE include lib/framelesswindow)
 target_link_libraries(PaperariumDesign PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 
+# For Mac bundle, link Cocoa
+if(APPLE)
+    target_link_libraries(PaperariumDesign PRIVATE "-framework Cocoa")
+endif()
+
+# Define the target's properties
 set_target_properties(PaperariumDesign PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
@@ -61,10 +72,10 @@ set_target_properties(PaperariumDesign PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-install(TARGETS PaperariumDesign
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+# Install libraries
+install(TARGETS PaperariumDesign BUNDLE DESTINATION . LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
+# Finalize executable if necessary
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(PaperariumDesign)
 endif()
