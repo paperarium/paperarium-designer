@@ -1,5 +1,6 @@
 #include "mainwindow.h"
-#include "./ui_mainwindow.h"
+#include "ui_mainwindow.h"
+#include "openglwidget.h"
 
 /**
  * Builds the window.
@@ -8,11 +9,13 @@
  * @param parent
  */
 MainWindow::MainWindow(QWidget *parent)
-    : CFramelessWindow(parent)
+    : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     // initialize the UI
     ui->setupUi(this);
+
+    setFocusPolicy(Qt::ClickFocus);
 
     // window meta information
     setWindowTitle(tr("Paperarium Design"));
@@ -21,13 +24,11 @@ MainWindow::MainWindow(QWidget *parent)
     // window attributes
     setAttribute(Qt::WA_QuitOnClose);
     setAttribute(Qt::WA_TranslucentBackground);
-
-    // window flags
-//    setWindowFlags(Qt::FramelessWindowHint);
 }
 
 MainWindow::~MainWindow()
 {
+    delete openGLWidget;
     delete ui;
 }
 

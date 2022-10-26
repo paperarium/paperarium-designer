@@ -14,34 +14,25 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ui/)
 set(AUTOMOC_PATH_PREFIX ON)
 
 # Include Qt packages
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools OpenGL OpenGLWidgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools OpenGL OpenGLWidgets)
 
 # --------------------------------- SOURCES --------------------------------- #
 
 # Locate different types of files
 file(GLOB PAPERARIUM_DESIGN_SRCS src/*.cpp)
-file(GLOB PAPERARIUM_DESIGN_HEADERS include/*.h lib/*/*.h)
+file(GLOB PAPERARIUM_DESIGN_HEADERS include/*.h)
 file(GLOB PAPERARIUM_DESIGN_UIS ui/*.ui)
 file(GLOB PAPERARIUM_DESIGN_TSS lang/*.ts)
+file(GLOB PAPERARIUM_DESIGN_RESOURCES resources/*/*.qrc)
 # Concatenate all into project sources
 set(PAPERARIUM_DESIGN_ALL_SOURCES
     main.cpp
     ${PAPERARIUM_DESIGN_SRCS}
     ${PAPERARIUM_DESIGN_HEADERS}
     ${PAPERARIUM_DESIGN_UIS}
-    ${PAPERARIUM_DESIGN_TSS})
-
-# On Mac, add the Objective-C frameless window object instead
-if(APPLE)
-    set(PAPERARIUM_DESIGN_ALL_SOURCES
-        ${PAPERARIUM_DESIGN_ALL_SOURCES}
-        lib/framelesswindow/framelesswindow.mm)
-else()
-    set(PAPERARIUM_DESIGN_ALL_SOURCES
-        ${PAPERARIUM_DESIGN_ALL_SOURCES}
-        lib/framelesswindow/framelesswindow.cpp)
-endif()
+    ${PAPERARIUM_DESIGN_TSS}
+    ${PAPERARIUM_DESIGN_RESOURCES})
 
 # ------------------------------- EXECUTION -------------------------------- #
 
@@ -54,14 +45,29 @@ else()
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${PAPERARIUM_DESIGN_TSS})
 endif()
 
-# Link libraries + include directories
-target_include_directories(PaperariumDesign PRIVATE include lib/framelesswindow)
-target_link_libraries(PaperariumDesign PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+# --------------------------- INCLUDE LIBRARIES ---------------------------- #
 
-# For Mac bundle, link Cocoa
-if(APPLE)
-    target_link_libraries(PaperariumDesign PRIVATE "-framework Cocoa")
+# -- assimp
+find_package(assimp REQUIRED)
+if(ASSIMP_FOUND)
+    target_include_directories(PaperariumDesign ${ASSIMP_LIBRARIES})
 endif()
+
+# local includes are all in the include/ folder
+target_include_directories(PaperariumDesign PRIVATE include)
+
+# ----------------------------- LINK LIBRARIES ------------------------------ #
+
+# link all our libraries
+target_link_libraries(
+    PaperariumDesign
+    PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::OpenGL
+    Qt${QT_VERSION_MAJOR}::OpenGLWidgets
+    ${ASSIMP_LIBRARIES})
+
+# ---------------------------- BUNDLE BUILD + INSTALL ----------------------- #
 
 # Define the target's properties
 set_target_properties(PaperariumDesign PROPERTIES
