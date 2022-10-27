@@ -63,7 +63,7 @@ Paperarium does not yet have a release package, or even a beta version. Hopefull
 
 ## Credits
 
-The early code for this software would not have been possible without the fantastic work of Daniel Trivino and Ruben Sardon on their own [Qt 3D Model Viewer](https://github.com/cumus/QT-3D-Model-Viewer). Other packages / frameworks used:
+The early code for this software would not have been possible without the fantastic work of [Daniel Triviño](https://github.com/dibu13) and [Rubén Sardón](https://github.com/cumus/) on their own [Qt 3D Model Viewer](https://github.com/cumus/QT-3D-Model-Viewer). Other packages / frameworks used:
 
 - [Qt](https://www.qt.io)
 - [OpenGL](https://www.opengl.org)
@@ -79,4 +79,4 @@ LGPL
 ---
 
 > [evankirkiles.com](https://evankirkiles.com) &nbsp;&middot;&nbsp;
-> GitHub [@evankirkiles](https://github.com/evankirkiles) &nbsp;&middot;&nbsp;
+> GitHub [@evankirkiles](https://github.com/evankirkiles)
