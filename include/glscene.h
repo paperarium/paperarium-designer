@@ -6,11 +6,14 @@
 
 class OpenGLWidget;
 class GLObject;
+class GLMesh;
 
 class GLScene {
 public: // METHODS
     GLScene();
     ~GLScene();
+
+    GLMesh* InitDemo(OpenGLWidget* renderer);
 
     void Clear();
     void Draw(OpenGLWidget* renderer);
@@ -24,6 +27,8 @@ public: // MEMBERS
     int gloId = 0;
     bool loadNewModel = false;
     QString newModelPath;
+
+    GLObject* gloDemo = nullptr;
 };
 
 #endif // GLSCENE_H

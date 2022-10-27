@@ -6,12 +6,13 @@
 #include <QVector3D>
 #include <QPoint>
 #include <QOpenGLWidget>
-#include <QOpenGLFunctions>
+#include <QOpenGLFunctions_3_3_Core>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 #include <QMouseEvent>
 #include <QTimer>
+#include <QOpenGLDebugLogger>
 
 class GLTransform;
 class GLMesh;
@@ -31,7 +32,7 @@ class GLScene;
  *  - SKYBOX (6)
  */
 enum GLSHADER_TYPE: int {
-    DEFAULT = 0,
+    DEFAULT,
     SINGLE_COLOR,
     FRAMEBUFFER_TO_SCREEN,
     GRAPHIC_BUFFER,
@@ -86,7 +87,7 @@ struct GLLight {
  *
  * A custom OpenGLWidget in which to display the papercraft's model.
  */
-class OpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
+class OpenGLWidget : public QOpenGLWidget, protected QOpenGLFunctions_3_3_Core
 {
     Q_OBJECT
 public: // METHODS
@@ -117,13 +118,13 @@ protected: // METHODS
 private: // METHODS
 
     void RenderQuad();
-//    void RenderCube();
+    void RenderCube();
 //    void RenderSkybox();
 //    int LoadSkyboxes(const QVector<QString> paths);
     void LoadShaders();
     void LoadFramebuffer();
     void DrawBordered();
-//    void PostProcessDeferredLights();
+    void PostProcessDeferredLights();
 
 public: // MEMBERS
 
@@ -142,8 +143,8 @@ public: // MEMBERS
 
     // Rendering options
     bool use_deferred = false;
-    bool draw_borders = true;
-    float mode = 8;
+    bool draw_borders = false;
+    float mode = 0;
     int current_skybox = 0;
 
     // Stencil border
@@ -166,7 +167,8 @@ private: // MEMBERS
     // Camera
     QPointF mouse_pos;
     bool cam_dir[6];
-    bool orbiting = false;
+    bool orbiting = true;
+    QMatrix4x4 m_proj;
 
     // Time control
     QTimer* timer = nullptr;
@@ -176,12 +178,16 @@ private: // MEMBERS
     // Context dimensions
     int width, height;
 
+    // Ligh Cube
+    unsigned int cubeVAO = 0;
+    unsigned int cubeVBO;
+
     // Skybox
     QVector<QOpenGLTexture*> skyboxes;
 
     // Frame buffer
     unsigned int fbo;
-    unsigned int gPosition, gNormal, gAlbedoSpec;
+    unsigned int gPosition, gNormal, gAlbedo;
     unsigned int rboDepth;
 
     // screen quad
@@ -191,32 +197,11 @@ private: // MEMBERS
     // Border stack vector
     QVector<GLMesh*> border_meshes;
 
-    // Shader uniform locations
-    QMatrix4x4 m_proj;
-    // Default shader values
-    int d_mvMatrixLoc;
-    int d_normalMatrixLoc;
-    int d_projMatrixLoc;
-    int d_lightPosLoc;
-    int d_lightIntensityLoc;
-    int d_textureLoc;
-    int d_modeLoc;
-    // Single Color
-    int sc_modelView;
-    int sc_proj;
-    int sc_color;
-    int sc_alpha;
-    // Framebuffer to screen
-    int fs_screenTexture;
-    // Graphic Buffer
-    // Deferred Shading
-    // Lighting Pass
-    int def_posLoc;
-    int def_normalLoc;
-    int def_albedospecLoc;
-
     // Max Lights
     const int NR_LIGHTS = 32;
+
+    // Debug logger
+    QOpenGLDebugLogger* debugLogger;
 };
 
 #endif // OPENGLWIDGET_H

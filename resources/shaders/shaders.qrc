@@ -1,5 +1,15 @@
 <RCC>
     <qresource prefix="/shaders">
+        <file>single_color.frag</file>
+        <file>single_color.vert</file>
+        <file>graphic_buffer.frag</file>
+        <file>graphic_buffer.vert</file>
+        <file>framebuffer_to_screen.frag</file>
+        <file>framebuffer_to_screen.vert</file>
+        <file>deferred_light.frag</file>
+        <file>deferred_light.vert</file>
+        <file>deferred_shading.frag</file>
+        <file>deferred_shading.vert</file>
         <file>default.frag</file>
         <file>default.vert</file>
     </qresource>

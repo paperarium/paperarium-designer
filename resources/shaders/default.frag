@@ -1,41 +1,41 @@
-in vec3 vert;
-in vec3 vertNormal;
-in mediump vec4 texc;
-in vec3 bitn;
-in vec3 tn;
-in vec3 Position;
+# version 330
 
 uniform vec3 cameraPos;
 uniform float mode;
+uniform sampler2D diffuseTexture;
 
-uniform samplerCube skybox;
-uniform sampler2D texture_diffuse1;
-uniform sampler2D texture_specular1;
+in vec3 Vert;
+in vec3 VertNormal;
+in mediump vec2 TexCoords;
+in vec3 Bitangent;
+in vec3 Tangent;
+in vec3 Position;
+
+layout (location = 0) out vec4 gFragColor;
 
 void main() {
-    vec3 T = normalize(cross(bitn, tn));
+    vec3 T = normalize(cross(Bitangent, Tangent));
     vec3 I = normalize(Position - cameraPos);
-
     if (mode == 0)                  // 0 - Diffuse texture
-        gl_FragColor = vec4(1.0);
+        gFragColor = texture(diffuseTexture, TexCoords);
     else if (mode == 1)             // 1 - Vertex position
-        gl_FragColor = vec4(vert, 1.0);
+        gFragColor = vec4(Vert, 1.0);
     else if (mode == 2)             // 2 - Vertex normal
-        gl_FragColor = vec4(vertNormal, 1.0);
+        gFragColor = vec4(VertNormal, 1.0);
     else if (mode == 3)             // 3 - Vertex texture coord
-        gl_FragColor = texc;
+        gFragColor = vec4(TexCoords, 0.0, 0.0);
     else if (mode == 4)             // 4 - Bitangent
-        gl_FragColor = vec4(bitn, 1.0);
+        gFragColor = vec4(Bitangent, 1.0);
     else if (mode == 5)             // 5. Tangent
-        gl_FragColor = vec4(tn, 1.0);
+        gFragColor = vec4(Tangent, 1.0);
     else if (mode == 6)             // 6. Depth
-        gl_FragColor = vec4(vec3(gl_FragCoord.z), 1.0);
+        gFragColor = vec4(vec3(gl_FragCoord.z), 1.0);
     else if (mode == 7) {           // 7. Linear depth
         float near = 0.1;
         float far = 100.0;
         float z = gl_FragCoord.z * 2.0 - 1.0;
         float linear_depth = (2.0 * near * far) / (far + near - z * (far - near));
-        gl_FragColor = vec4(vec3(1.0 - (linear_depth / far)), 1.0);
-    } else if (mode == 8)           // 8. Reflect
-        gl_FragColor = vec4(textureCube(skybox, reflect(I, vertNormal)).rgb, 1.0);
+        gFragColor = vec4(vec3(1.0 - (linear_depth / far)), 1.0);
+    }
+    gFragColor = vec4(0,1,0,1.0);
 }

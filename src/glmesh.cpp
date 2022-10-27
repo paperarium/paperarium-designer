@@ -43,7 +43,7 @@ void GLMesh::importModel(QString path, OpenGLWidget* renderer) {
     bool extension = true;
     QString name;
     directory = path;
-    for (int i =  directory.length(); i > 0; i--) {
+    for (int i = directory.length() - 1; i > 0; i--) {
         if (directory[i] != '/') {
             if (!extension) name = directory[i] + name;
             if (directory[i] == '.') extension = false;
@@ -51,7 +51,7 @@ void GLMesh::importModel(QString path, OpenGLWidget* renderer) {
         } else break;
     }
 
-    qDebug() << "Mesh at:" << directory << Qt::endl;
+    qDebug() << "Mesh at:" << directory;
 
     // add the ASSIMP mesh to the current object
     glObject->name = name;
@@ -98,7 +98,6 @@ GLSubMesh* GLMesh::processMesh(aiMesh* mesh, const aiScene *scene, OpenGLWidget*
         vertex.Normal.setY(mesh->mNormals[i].y);
         vertex.Normal.setZ(mesh->mNormals[i].z);
         // read in texture coords, if they exist
-        // ! TODO: Support multiple texture coords per vertex
         if (mesh->HasTextureCoords(0)) {
             vertex.TexCoords.setX(mesh->mTextureCoords[0][i].x);
             vertex.TexCoords.setY(mesh->mTextureCoords[0][i].y);
@@ -144,7 +143,7 @@ GLSubMesh* GLMesh::processMesh(aiMesh* mesh, const aiScene *scene, OpenGLWidget*
         *float_p++ = subMesh->vertices[i].Normal.y();
         *float_p++ = subMesh->vertices[i].Normal.z();
         // load texcoords
-        float_p = subMesh->texcoord_data.data() + (3 * i);
+        float_p = subMesh->texcoord_data.data() + (2 * i);
         *float_p++ = subMesh->vertices[i].TexCoords.x();
         *float_p++ = subMesh->vertices[i].TexCoords.y();
         // load tangent
@@ -175,12 +174,10 @@ GLSubMesh* GLMesh::processMesh(aiMesh* mesh, const aiScene *scene, OpenGLWidget*
         aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
         QVector<GLTexture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
         subMesh->textures << diffuseMaps;
-        QVector<GLTexture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-        subMesh->textures << specularMaps;
     }
 
     // done! log the submesh
-    qDebug() << " - Mesh Loading: " << mesh->mName.C_Str() << " with " << subMesh->vertices.count() << " vertices";
+    qDebug() << "Loading Mesh:" << mesh->mName.C_Str() << "with" << subMesh->vertices.count() << "vertices";
     renderer->LoadSubMesh(subMesh);
     return subMesh;
 }
@@ -205,7 +202,7 @@ QVector<GLTexture> GLMesh::loadMaterialTextures(aiMaterial *mat, aiTextureType t
         if (!skip) {
             GLTexture texture;
             texture.glTexture = new QOpenGLTexture(QImage(directory + str.C_Str()));
-            qDebug() << "NEW TEXTURE";
+            qDebug() << "Loading Texture:"<< str.C_Str();
             texture.type = typeName;
             texture.path = str.C_Str();
             textures.push_back(texture);

@@ -59,6 +59,7 @@ void OpenGLWidget::Tick() {
 }
 
 void OpenGLWidget::initializeGL() {
+
     // initialize the GL instance
     state = INITIALIZING;
     initializeOpenGLFunctions();
@@ -86,6 +87,9 @@ void OpenGLWidget::initializeGL() {
     glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
+    // Try loading the Demo
+    scene->InitDemo(this);
+
     // begin the tick timer for ticking the OpenGL scene
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &OpenGLWidget::Tick);
@@ -109,7 +113,7 @@ void OpenGLWidget::paintGL() {
     }
 
     // reset the buffer
-    glClearColor(0,0,0,1);
+    glClearColor(1,1,1,1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glStencilMask(0x00);
@@ -122,8 +126,9 @@ void OpenGLWidget::paintGL() {
     if (scene != nullptr) {
         scene->Draw(this);
 //        if (renderSkybox) RenderSkybox();
+//        RenderCube();
         DrawBordered();
-//        PostProcessDeferredLights();
+        PostProcessDeferredLights();
     }
 
     // done with draw call!
@@ -148,49 +153,42 @@ void OpenGLWidget::DrawMesh(GLMesh* mesh, GLSHADER_TYPE shader) {
     QOpenGLShaderProgram* program = programs[static_cast<int>(shader)];
     program->bind();
 
+    shader = SINGLE_COLOR;
+
     // now draw mesh based on shader type
     switch (shader) {
     // for the default shader, just draw the mesh normally, with textures
     case DEFAULT: {
         // pass in meta information about the render pass to the shader
-        program->setUniformValue(d_projMatrixLoc, m_proj);
-        program->setUniformValue(d_mvMatrixLoc, camera->GetWorldMatrix().inverted() * m_world);
-        program->setUniformValue(d_normalMatrixLoc, m_world.normalMatrix());
+        program->setUniformValue("projMatrix", m_proj);
+        program->setUniformValue("mvMatrix", camera->GetWorldMatrix().inverted() * m_world);
+        program->setUniformValue("normalMatrix", m_world.normalMatrix());
         program->setUniformValue("modelMatrix", m_world);
         program->setUniformValue("cameraPos", camera->GetPos());
-        program->setUniformValue(d_modeLoc, mode);
+        program->setUniformValue("mode", 1);
 
         // now pass in each mesh to the shader
         for (int i = 0; i < mesh->sub_meshes.size(); i++) {
             GLSubMesh* sub = mesh->sub_meshes[i];
             // if we have the vertex array object already
             if (sub->vao.isCreated()) {
-                // if skybox exists, bind it to the shader
-                if (skyboxes[current_skybox] != nullptr)
-                    skyboxes[current_skybox]->bind();
-                unsigned int diffuseNr = 1;
-                unsigned int specularNr = 1;
-                // load the textures into the shader
-                for (int i = 0; i < sub->textures.size(); i++) {
-                    glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(i));
-                    // generate a name for the texture based on diffuse vs. specular
-                    QString number;
-                    QString name = sub->textures[i].type;
-                    if (name == "texture_diffuse") number = QString::number(diffuseNr++);
-                    else if (name == "texture_specular") number = QString::number(specularNr++);
-                    // pass the name for the texture into the shader program
-                    program->setUniformValue((name + number).toStdString().c_str(), static_cast<unsigned int>(i));
-                    // and bind the texture to the shader
-                    sub->textures[i].glTexture->bind();
+                // search for the diffuse texture
+                GLTexture* diffuseTexture = nullptr;
+                for (int i = 0; i < sub->textures.size() && diffuseTexture == nullptr; i++)
+                    if (sub->textures[i].type == "texture_diffuse")
+                        diffuseTexture = &sub->textures[i];
+                // if we found a diffuse texture, activate it
+                if (diffuseTexture != nullptr) {
+                    glActiveTexture(GL_TEXTURE0);
+                    program->setUniformValue("diffuseTexture", 0);
+                    diffuseTexture->glTexture->bind();
                 }
                 // load the vertices into the shader and draw them
                 QOpenGLVertexArrayObject::Binder vaoBinder(&sub->vao);
                 if (sub->num_faces > 0) glDrawElements(GL_TRIANGLES, sub->num_faces * 3, GL_UNSIGNED_INT, nullptr);
                 else glDrawArrays(GL_TRIANGLES, 0, sub->num_vertices);
-                // lastly, release the textures we used in this draw call
-                for (int i = 0; i < sub->textures.count(); i++)
-                    if (sub->textures[i].glTexture != nullptr && sub->textures[i].glTexture->isCreated())
-                        sub->textures[i].glTexture->release();
+                // finally, release the texture
+                if (diffuseTexture != nullptr) diffuseTexture->glTexture->release();
             }
         }
         break;
@@ -199,10 +197,10 @@ void OpenGLWidget::DrawMesh(GLMesh* mesh, GLSHADER_TYPE shader) {
     case SINGLE_COLOR: {
         m_world.scale(border_scale);
         // pass in meta information about the render pass to the shader
-        program->setUniformValue(sc_proj, m_proj);
-        program->setUniformValue(sc_modelView, camera->GetWorldMatrix().inverted() * m_world);
-        program->setUniformValue(sc_color, border_color);
-        program->setUniformValue(sc_alpha, border_alpha);
+        program->setUniformValue("projection", m_proj);
+        program->setUniformValue("modelView", camera->GetWorldMatrix().inverted() * m_world);
+        program->setUniformValue("flatColor", border_color);
+        program->setUniformValue("alpha", border_alpha);
 
         // now pass in each mesh to the shader
         for(int i = 0; i < mesh->sub_meshes.size(); i++) {
@@ -219,7 +217,7 @@ void OpenGLWidget::DrawMesh(GLMesh* mesh, GLSHADER_TYPE shader) {
     }
     case GRAPHIC_BUFFER: {
         if (state == BORDERS) m_world.scale(border_scale);
-        program->setUniformValue("use_flat_color", state == BORDERS);
+        program->setUniformValue("useFlatColor", state == BORDERS);
         program->setUniformValue("projection", m_proj);
         program->setUniformValue("view", camera->GetWorldMatrix().inverted());
         program->setUniformValue("model", m_world);
@@ -230,29 +228,23 @@ void OpenGLWidget::DrawMesh(GLMesh* mesh, GLSHADER_TYPE shader) {
             GLSubMesh* sub = mesh->sub_meshes[i];
             // if we have the vertex array object already
             if (sub->vao.isCreated()) {
-                // bind appropriate textures as single colors
-                unsigned int diffuseNr = 1;
-                unsigned int specularNr = 1;
-                for (int i = 0; i < sub->textures.size(); i++) {
-                    glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(i));
-                    // generate a name for the texture based on diffuse vs. specular
-                    QString number;
-                    QString name = sub->textures[i].type;
-                    if (name == "texture_diffuse") number = QString::number(diffuseNr++);
-                    else if (name == "texture_specular") number = QString::number(specularNr++);
-                    // pass the name for the texture into the shader program
-                    program->setUniformValue((name + number).toStdString().c_str(), static_cast<unsigned int>(i));
-                    // and bind the texture to the shader
-                    sub->textures[i].glTexture->bind();
+                // search for the diffuse texture
+                GLTexture* diffuseTexture = nullptr;
+                for (int i = 0; i < sub->textures.size() && diffuseTexture == nullptr; i++)
+                    if (sub->textures[i].type == "texture_diffuse")
+                        diffuseTexture = &sub->textures[i];
+                // if we found a diffuse texture, activate it
+                if (diffuseTexture != nullptr) {
+                    glActiveTexture(GL_TEXTURE0);
+                    program->setUniformValue("diffuseTexture", 0);
+                    diffuseTexture->glTexture->bind();
                 }
                 // load the vertices into the shader and draw them
                 QOpenGLVertexArrayObject::Binder vaoBinder(&sub->vao);
                 if (sub->num_faces > 0) glDrawElements(GL_TRIANGLES, sub->num_faces * 3, GL_UNSIGNED_INT, nullptr);
                 else glDrawArrays(GL_TRIANGLES, 0, sub->num_vertices);
-                // lastly, release the textures we used in this draw call
-                for (int i = 0; i < sub->textures.count(); i++)
-                    if (sub->textures[i].glTexture != nullptr && sub->textures[i].glTexture->isCreated())
-                        sub->textures[i].glTexture->release();
+                // finally, release the texture
+                if (diffuseTexture != nullptr) diffuseTexture->glTexture->release();
             }
         }
         break;
@@ -281,6 +273,7 @@ void OpenGLWidget::LoadSubMesh(GLSubMesh* mesh) {
     mesh->vbo.allocate(mesh->vertex_data.constData(), 3 * mesh->num_vertices * static_cast<int>(sizeof(GLfloat)));
     programs[DEFAULT]->enableAttributeArray(0);
     programs[DEFAULT]->setAttributeBuffer(0, GL_FLOAT, 0, 3);
+    mesh->vbo.release();
 
     // load our NORMALS
     mesh->nbo.create();
@@ -289,14 +282,16 @@ void OpenGLWidget::LoadSubMesh(GLSubMesh* mesh) {
     mesh->nbo.allocate(mesh->normal_data.constData(), 3 * mesh->num_vertices * static_cast<int>(sizeof(GLfloat)));
     programs[DEFAULT]->enableAttributeArray(1);
     programs[DEFAULT]->setAttributeBuffer(1, GL_FLOAT, 0, 3);
+    mesh->nbo.release();
 
     // load our TEXTURE COORDS
     mesh->tbo.create();
     mesh->tbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
     mesh->tbo.bind();
-    mesh->tbo.allocate(mesh->texcoord_data.constData(), 3 * mesh->num_vertices * static_cast<int>(sizeof(GLfloat)));
+    mesh->tbo.allocate(mesh->texcoord_data.constData(), 2 * mesh->num_vertices * static_cast<int>(sizeof(GLfloat)));
     programs[DEFAULT]->enableAttributeArray(2);
     programs[DEFAULT]->setAttributeBuffer(2, GL_FLOAT, 0, 2);
+    mesh->tbo.release();
 
     // load our TANGENTS
     mesh->tnbo.create();
@@ -305,6 +300,7 @@ void OpenGLWidget::LoadSubMesh(GLSubMesh* mesh) {
     mesh->tnbo.allocate(mesh->tangent_data.constData(), 3 * mesh->num_vertices * static_cast<int>(sizeof(GLfloat)));
     programs[DEFAULT]->enableAttributeArray(3);
     programs[DEFAULT]->setAttributeBuffer(3, GL_FLOAT, 0, 3);
+    mesh->tnbo.release();
 
     // load our BITANGENTS
     mesh->btnbo.create();
@@ -313,6 +309,7 @@ void OpenGLWidget::LoadSubMesh(GLSubMesh* mesh) {
     mesh->btnbo.allocate(mesh->bitangent_data.constData(), 3 * mesh->num_vertices * static_cast<int>(sizeof(GLfloat)));
     programs[DEFAULT]->enableAttributeArray(4);
     programs[DEFAULT]->setAttributeBuffer(4, GL_FLOAT, 0, 3);
+    mesh->btnbo.release();
 
     // setup our INDICES
     if (mesh->num_faces > 0) {
@@ -320,6 +317,7 @@ void OpenGLWidget::LoadSubMesh(GLSubMesh* mesh) {
         mesh->ibo.setUsagePattern(QOpenGLBuffer::StaticDraw);
         mesh->ibo.bind();
         mesh->ibo.allocate(mesh->index_data.constData(), 3 * mesh->num_faces * static_cast<int>(sizeof(GLint)));
+        mesh->ibo.release();
     }
 
     // release the shader program
@@ -396,6 +394,7 @@ void OpenGLWidget::keyPressEvent(QKeyEvent *event) {
     case Qt::Key_G: use_deferred = !use_deferred; break;
     default: break;
     }
+    qDebug() << camera->GetPos();
 }
 
 void OpenGLWidget::keyReleaseEvent(QKeyEvent *event) {
@@ -447,113 +446,28 @@ void OpenGLWidget::RenderQuad() {
 }
 
 void OpenGLWidget::LoadShaders() {
-    // Load default shader
-    QOpenGLShaderProgram* d_shader = new QOpenGLShaderProgram();
-    if (!d_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/default.vert"))
-        qDebug() << "Error loading default.vert shader";
-    if (!d_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/default.frag"))
-        qDebug() << "Error loading default.frag shader";
-    d_shader->bindAttributeLocation("vertex", 0);
-    d_shader->bindAttributeLocation("normal", 1);
-    d_shader->bindAttributeLocation("texCoord", 2);
-    d_shader->bindAttributeLocation("tangent", 3);
-    d_shader->bindAttributeLocation("bitangent", 4);
-    if (!d_shader->link()) qDebug() << "Error linking default shader!";
-    if (!d_shader->bind()) qDebug() << "Error binding default shader!";
-    d_projMatrixLoc = d_shader->uniformLocation("projMatrix");
-    d_mvMatrixLoc = d_shader->uniformLocation("mvMatrix");
-    d_normalMatrixLoc = d_shader->uniformLocation("normalMatrix");
-    d_lightPosLoc = d_shader->uniformLocation("lightPos");
-    d_lightIntensityLoc = d_shader->uniformLocation("light_intensity");
-    d_modeLoc = d_shader->uniformLocation("mode");
-    d_textureLoc = d_shader->uniformLocation("texture");
-    programs.push_back(d_shader);
-    d_shader->release();
+    // The ordered list of shaders we want to load
+    QVector<QString> shaders{
+        "default",
+        "single_color",
+        "framebuffer_to_screen",
+        "graphic_buffer",
+        "deferred_shading",
+        "deferred_light"
+    };
 
-   // Load single color shader
-   QOpenGLShaderProgram* sc_shader = new QOpenGLShaderProgram();
-   if (!sc_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/singlecolor.vert"))
-       qDebug() << "Error loading singecolor.vert shader";
-   if (!sc_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/singlecolor.frag"))
-       qDebug() << "Error loading singecolor.frag shader";
-    sc_shader->bindAttributeLocation("aPos", 0);
-    sc_shader->bindAttributeLocation("texCoord", 1);
-    if (!sc_shader->link()) qDebug() << "Error linking single color shader!";
-    if (!sc_shader->bind()) qDebug() << "Error binding single color shader!";
-    sc_modelView = sc_shader->uniformLocation("modelView");
-    sc_proj = sc_shader->uniformLocation("projection");
-    sc_color = sc_shader->uniformLocation("flat_color");
-    sc_alpha = sc_shader->uniformLocation("alpha");
-    programs.push_back(sc_shader);
-    sc_shader->release();
-
-    // Load framebuffer to screen shader
-    QOpenGLShaderProgram* fs_shader = new QOpenGLShaderProgram();
-    if (!fs_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/framebuffertoscreen.vert"))
-        qDebug() << "Error loading framebuffertoscreen.vert shader";
-    if (!fs_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/framebuffertoscreen.frag"))
-        qDebug() << "Error loading framebuffertoscreen.frag shader";
-    fs_shader->bindAttributeLocation("vertex", 0);
-    fs_shader->bindAttributeLocation("texCoord", 1);
-    if (!fs_shader->link()) qDebug() << "Error linking framebuffer to screen shader!";
-    if (!fs_shader->bind()) qDebug() << "Error binding framebuffer to screen shader!";
-    fs_screenTexture = fs_shader->uniformLocation("screenTexture");
-    fs_shader->setUniformValue(fs_screenTexture, 0);
-    programs.push_back(fs_shader);
-    fs_shader->release();
-
-    // Load graphics buffer shader
-    QOpenGLShaderProgram* gb_shader = new QOpenGLShaderProgram();
-    if (!gb_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/graphic_buffer.vert"))
-        qDebug() << "Error loading graphic_buffer.vert shader";
-    if (!gb_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/graphic_buffer.frag"))
-        qDebug() << "Error loading graphic_buffer.frag shader";
-    gb_shader->bindAttributeLocation("gPosition", 0);
-    gb_shader->bindAttributeLocation("gNormal", 1);
-    gb_shader->bindAttributeLocation("gAlbedoSpec", 2);
-    if (!gb_shader->link()) qDebug() << "Error linking graphic buffer shader!";
-    if (!gb_shader->bind()) qDebug() << "Error binding graphic buffer shader!";
-    programs.push_back(gb_shader);
-    gb_shader->release();
-
-    // Load deferred shading shader
-    QOpenGLShaderProgram* def_shader = new QOpenGLShaderProgram();
-    if (!def_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/deferred_shading.vert"))
-        qDebug() << "Error loading deferred_shading.vert shader";
-    if (!def_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/deferred_shading.frag"))
-        qDebug() << "Error loading deferred_shading.frag shader";
-    if (!def_shader->link()) qDebug() << "Error linking deferred shading shader!";
-    if (!def_shader->bind()) qDebug() << "Error binding deferred shading shader!";
-    def_posLoc = def_shader->uniformLocation("gPosition");
-    def_normalLoc = def_shader->uniformLocation("gNormal");
-    def_albedospecLoc = def_shader->uniformLocation("gAlbedoSpec");
-    def_shader->setUniformValue(def_posLoc, 0);
-    def_shader->setUniformValue(def_normalLoc, 1);
-    def_shader->setUniformValue(def_albedospecLoc, 2);
-    programs.push_back(def_shader);
-    def_shader->release();
-
-    // Load deferred lighting shader
-    QOpenGLShaderProgram* dl_shader = new QOpenGLShaderProgram();
-    if (!dl_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/deferred_light.vert"))
-        qDebug() << "Error loading deferred_light.vert shader";
-    if (!dl_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/deferred_light.frag"))
-        qDebug() << "Error loading deferred_light.frag shader";
-    if (!dl_shader->link()) qDebug() << "Error linking deferred lighting shader!";
-    if (!dl_shader->bind()) qDebug() << "Error binding deferred lighting shader!";
-    programs.push_back(dl_shader);
-    dl_shader->release();
-
-    // Skybox shader
-    QOpenGLShaderProgram* sb_shader = new QOpenGLShaderProgram();
-    if (!sb_shader->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/skybox.vert"))
-        qDebug() << "Error loading skybox.vert shader";
-    if (!sb_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/skybox.frag"))
-        qDebug() << "Error loading skybox.frag shader";
-    if (!sb_shader->link()) qDebug() << "Error linking skybox shader!";
-    if (!sb_shader->bind()) qDebug() << "Error binding skybox shader!";
-    programs.push_back(sb_shader);
-    sb_shader->release();
+    // Iterate over and load each shader from their sources
+    for (const auto& shader : shaders) {
+        QOpenGLShaderProgram* shader_program = new QOpenGLShaderProgram();
+        if (!shader_program->addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shaders/" + shader + ".vert"))
+            qDebug() << "Error loading " + shader + ".vert shader";
+        if (!shader_program->addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shaders/" + shader + ".frag"))
+            qDebug() << "Error loading " + shader + ".frag shader";
+        if (!shader_program->link()) qDebug() << "Error linking " + shader + " shader!";
+        if (!shader_program->bind()) qDebug() << "Error binding " + shader + " shader!";
+        programs.push_back(shader_program);
+        shader_program->release();
+    }
 }
 
 void OpenGLWidget::LoadFramebuffer() {
@@ -578,12 +492,12 @@ void OpenGLWidget::LoadFramebuffer() {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
 
     // Color + specular color buffer
-    glGenTextures(1, &gAlbedoSpec);
-    glBindTexture(GL_TEXTURE_2D, gAlbedoSpec);
+    glGenTextures(1, &gAlbedo);
+    glBindTexture(GL_TEXTURE_2D, gAlbedo);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedoSpec, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gAlbedo, 0);
 
     // Color attachments
     GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
@@ -597,7 +511,7 @@ void OpenGLWidget::LoadFramebuffer() {
 
     // Check framebuffer status
     switch(glCheckFramebufferStatus(GL_FRAMEBUFFER)){
-    case GL_FRAMEBUFFER_COMPLETE: qInfo() << "Framebuffer Complete"; break; // Everything's OK
+    case GL_FRAMEBUFFER_COMPLETE: break; // Everything's OK
     case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: qInfo() << "Framebuffer ERROR: GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
     case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: qInfo() << "Framebuffer ERROR: GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
     case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: qInfo() << "Framebuffer ERROR: GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
@@ -636,4 +550,132 @@ void OpenGLWidget::DrawBordered() {
 
     // consume the border-drawing meshes
     border_meshes.clear();
+}
+
+void OpenGLWidget::PostProcessDeferredLights() {
+    if (!use_deferred) return;
+    state = POST_PROCESSING;
+    QOpenGLFramebufferObject::bindDefault();
+
+    // lighting pass
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    programs[DEFERRED_SHADING]->bind();
+    programs[DEFERRED_SHADING]->setUniformValue("viewPos", camera->GetPos());
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gPosition);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, gNormal);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, gAlbedo);
+
+    // Update and set scene lights
+    for (int i = 0; i < lights.count(); ++i) {
+        if (!lights[i].updated) {
+            lights[i].maxBrightness = std::fmaxf(std::fmaxf(lights[i].Color.x(), lights[i].Color.y()), lights[i].Color.z());
+            lights[i].radius = (-lights[i].Linear + std::sqrt(lights[i].Linear * lights[i].Linear - 4 * lights[i].Quadratic * (lights[i].Constant - (256.0f / 5.0f) * lights[i].maxBrightness))) / (2.0f * lights[i].Quadratic);
+            lights[i].updated = true;
+        }
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].isActive").toStdString().c_str(), lights[i].isActive);
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].Position").toStdString().c_str(), lights[i].Position);
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].Color").toStdString().c_str(), lights[i].Color);
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].Intensity").toStdString().c_str(), lights[i].Intensity);
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].Range").toStdString().c_str(), lights[i].MinRange);
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].Linear").toStdString().c_str(), lights[i].Linear);
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].Quadratic").toStdString().c_str(), lights[i].Quadratic);
+        programs[DEFERRED_SHADING]->setUniformValue(QString("lights[" + QString::number(i) + "].Radius").toStdString().c_str(), lights[i].radius);
+    }
+
+    RenderQuad();
+    programs[DEFERRED_SHADING]->release();
+
+    // copy geometry depth buffer to framebuffer's depth buffer
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // render lights on top of scene
+    programs[DEFERRED_LIGHT]->bind();
+    programs[DEFERRED_LIGHT]->setUniformValue("projection", m_proj);
+
+    for (int i = 0; i < lights.count(); i++) {
+        QMatrix4x4 w;
+        w.setToIdentity();
+        w.translate(lights[i].Position);
+        programs[DEFERRED_LIGHT]->setUniformValue("mv", camera->GetWorldMatrix().inverted() * w);
+        programs[DEFERRED_LIGHT]->setUniformValue("lightColor", lights[i].Color);
+        RenderCube();
+    }
+    programs[DEFERRED_LIGHT]->release();
+}
+
+void OpenGLWidget::RenderCube()
+{
+    if (cubeVAO == 0)
+    {
+        GLfloat vertices[] = {
+            // back face
+            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+             1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right
+             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+            -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+            // front face
+            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+             1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
+             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+            -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
+            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+            // left face
+            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+            -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
+            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+            -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+            // right face
+             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+             1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right
+             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+             1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left
+            // bottom face
+            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+             1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
+             1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+             1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+            -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+            // top face
+            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+             1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+             1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right
+             1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+            -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left
+        };
+        glGenVertexArrays(1, &cubeVAO);
+        glGenBuffers(1, &cubeVBO);
+        // fill buffer
+        glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        // link vertex attributes
+        glBindVertexArray(cubeVAO);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), nullptr);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(GLfloat)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(GLfloat)));
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    glBindVertexArray(cubeVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(0);
 }

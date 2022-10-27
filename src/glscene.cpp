@@ -2,6 +2,8 @@
 #include "globject.h"
 #include "glmesh.h"
 
+#include <QApplication>
+
 GLScene::GLScene() {
     root = new GLObject("root");
 }
@@ -37,4 +39,12 @@ GLObject *GLScene::AddGLObject(QString name, GLObject *parent) {
 
 void GLScene::RemoveEntity(int id) {
     // ! TODO: Reference-count resources to free unusued only
+}
+
+GLMesh* GLScene::InitDemo(OpenGLWidget* renderer) {
+    qDebug() << "HERE" << qApp->applicationDirPath();
+    gloDemo = AddGLObject("Demo");
+    GLMesh* mesh = new GLMesh(gloDemo);
+    mesh->importModel("/Users/evan/Desktop/evan/paperarium/paperarium-design/resources/demo/square.obj", renderer);
+    return nullptr;
 }
