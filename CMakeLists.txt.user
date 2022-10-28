@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 8.0.2, 2022-10-27T12:54:36. -->
+<!-- Written by QtCreator 8.0.2, 2022-10-28T06:53:07. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -83,6 +83,9 @@
    <valuemap type="QVariantMap" key="CppEditor.QuickFix">
     <value type="bool" key="UseGlobalSettings">true</value>
    </valuemap>
+   <valuelist type="QVariantList" key="ProjectExplorer.Project.Environment">
+    <value type="QString">VULKAN_SDK=/Users/evan/VulkanSDK/1.3.231.1/macOS/</value>
+   </valuelist>
   </valuemap>
  </data>
  <data>

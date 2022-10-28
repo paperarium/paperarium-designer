@@ -1,4 +1,5 @@
 # Use recommended CMake version and initialize project
+# set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake)
 cmake_minimum_required(VERSION 3.5)
 project(PaperariumDesign VERSION 0.1 LANGUAGES CXX)
 
@@ -14,14 +15,14 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ui/)
 set(AUTOMOC_PATH_PREFIX ON)
 
 # Include Qt packages
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools OpenGL OpenGLWidgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools OpenGL OpenGLWidgets)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Gui)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Gui)
 
 # --------------------------------- SOURCES --------------------------------- #
 
 # Locate different types of files
 file(GLOB PAPERARIUM_DESIGN_SRCS src/*.cpp)
-file(GLOB PAPERARIUM_DESIGN_HEADERS include/*.h)
+file(GLOB PAPERARIUM_DESIGN_HEADERS include/*.h include/vulkanengine/*.h)
 file(GLOB PAPERARIUM_DESIGN_UIS ui/*.ui)
 file(GLOB PAPERARIUM_DESIGN_TSS lang/*.ts)
 file(GLOB PAPERARIUM_DESIGN_RESOURCES resources/*/*.qrc)
@@ -47,14 +48,26 @@ endif()
 
 # --------------------------- INCLUDE LIBRARIES ---------------------------- #
 
-# -- assimp
-find_package(assimp REQUIRED)
-if(ASSIMP_FOUND)
-    target_include_directories(PaperariumDesign ${ASSIMP_LIBRARIES})
+# Locate all the required packages
+find_package(Vulkan COMPONENTS glslc REQUIRED)      # Vulkan
+find_package(ASSIMP REQUIRED)                       # ASSIMP
+find_package(GLM REQUIRED)                          # GLM
+find_package(OpenMP REQUIRED)                       # OpenMP
+if (OPENMP_FOUND)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
 # local includes are all in the include/ folder
-target_include_directories(PaperariumDesign PRIVATE include)
+target_include_directories(
+    PaperariumDesign
+    PRIVATE
+    include
+    ${Vulkan_INCLUDE_DIRS}
+    ${ASSIMP_INCLUDE_DIRS}
+    ${GLM_INCLUDE_DIRS}
+    ${OPENMP_INCLUDE_DIRS})
 
 # ----------------------------- LINK LIBRARIES ------------------------------ #
 
@@ -63,9 +76,11 @@ target_link_libraries(
     PaperariumDesign
     PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::OpenGL
-    Qt${QT_VERSION_MAJOR}::OpenGLWidgets
-    ${ASSIMP_LIBRARIES})
+    Qt${QT_VERSION_MAJOR}::Gui
+    ${ASSIMP_LIBRARIES}
+    ${Vulkan_LIBRARIES}
+    ${GLM_LIBRARIES}
+    ${OPENMP_LIBRARIES})
 
 # ---------------------------- BUNDLE BUILD + INSTALL ----------------------- #
 

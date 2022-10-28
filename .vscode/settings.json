@@ -1,0 +1,28 @@
+{
+  "C_Cpp.intelliSenseEngine": "Tag Parser",
+  "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 2, ColumnLimit: 0 }",
+  "cmake.cmakePath": "/usr/local/bin/cmake",
+  "cmake.configureSettings": {
+    "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake"
+  },
+  "files.associations": {
+    "ios": "cpp"
+  },
+  "fileHeaderComment.parameter": {
+    "*": {
+      "company": "Paperarium Design",
+      "name": "Evan Kirkiles"
+    }
+  },
+  "fileHeaderComment.template": {
+    "*": [
+      "${commentbegin}",
+      "${commentprefix} ${filename}",
+      "${commentprefix} Created by: ${name}",
+      "${commentprefix} Created on: ${date}",
+      "${commentprefix} for ${company}",
+      "${commentend}"
+    ]
+  },
+  "editor.formatOnSave": false
+}
