@@ -22,7 +22,7 @@ VulkanBase::~VulkanBase() {
   VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
   vkDeviceWaitIdle(m_device);
   VK_SAFE_DELETE(m_descriptorPool, vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr));
-  VK_SAFE_DELETE(m_renderPass, vkDestroyRenderPass(m_device, m_renderPass, nullptr);
+  VK_SAFE_DELETE(m_renderPass, vkDestroyRenderPass(m_device, m_renderPass, nullptr));
   for (auto &shaderModule : m_shaderModules)
     VK_SAFE_DELETE(shaderModule, vkDestroyShaderModule(m_device, shaderModule, nullptr));
   VK_SAFE_DELETE(m_pipelineCache, vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr));
@@ -338,7 +338,7 @@ void VulkanBase::createCommandPool() {
   cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   cmdPoolInfo.queueFamilyIndex = m_swapChain.queueNodeIndex;
   cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nuillptr, &m_cmdPool));
+  VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &m_cmdPool));
 }
 
 
@@ -476,7 +476,7 @@ void VulkanBase::setupRenderPass() {
   dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
   // finally build the render pass
-  VkRenderPasscreateInfo renderPassInfo = {};
+  VkRenderPassCreateInfo renderPassInfo = {};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
   renderPassInfo.pAttachments = attachments.data();
@@ -499,7 +499,7 @@ void VulkanBase::setupFrameBuffer() {
   // Depth/stencil attachment is the same for all frame buffers
   attachments[1] = m_depthStencil.view;
 
-  VkFrameBufferCreateInfo frameBufferCreateInfo = {};
+  VkFramebufferCreateInfo frameBufferCreateInfo = {};
   frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   frameBufferCreateInfo.pNext = NULL;
   frameBufferCreateInfo.renderPass = m_renderPass;
@@ -513,7 +513,7 @@ void VulkanBase::setupFrameBuffer() {
   m_frameBuffers.resize(m_swapChain.imageCount);
   for (uint32_t i = 0; i < m_frameBuffers.size(); i++) {
     attachments[0] = m_swapChain.buffers[i].view;
-    VK_CHECK_RESULT(vkCreateFrameBuffer(m_device, &frameBufferCreateInfo, nullptr, &m_frameBuffers[i]));
+    VK_CHECK_RESULT(vkCreateFramebuffer(m_device, &frameBufferCreateInfo, nullptr, &m_frameBuffers[i]));
   }
 }
 
@@ -541,7 +541,7 @@ void VulkanBase::submitFrame() {
       windowResize();
       return;
     } else {
-      VK_CHECK_RESULT(err);
+      VK_CHECK_RESULT(res);
     }
   }
   VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));

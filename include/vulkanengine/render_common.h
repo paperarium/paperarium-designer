@@ -41,7 +41,7 @@
 #endif
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtv/matrix_inverse.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 
 // Unix
 #ifdef __unix__

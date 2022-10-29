@@ -12,7 +12,7 @@ Q_OBJECT
 public:
     VulkanWindow(QWidget* parent = Q_NULLPTR);
     virtual ~VulkanWindow();
-    void setVulkanPtr(VulkanEngine::VulkanBaseEngine *vulkan);
+//    void setVulkanPtr(VulkanEngine::VulkanBaseEngine *vulkan);
 
     void resize(int width, int height);
     void drawFrame();
