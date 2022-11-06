@@ -6,7 +6,14 @@
     "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake"
   },
   "files.associations": {
-    "ios": "cpp"
+    "ios": "cpp",
+    "memory": "cpp",
+    "__config": "cpp",
+    "__nullptr": "cpp",
+    "qtimer": "cpp",
+    "chrono": "cpp",
+    "filesystem": "cpp",
+    "thread": "cpp"
   },
   "fileHeaderComment.parameter": {
     "*": {

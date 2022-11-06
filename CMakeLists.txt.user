@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 8.0.2, 2022-10-28T17:02:08. -->
+<!-- Written by QtCreator 8.0.2, 2022-11-05T18:52:18. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -357,7 +357,6 @@
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">PaperariumDesign</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
-    <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
     <value type="QString" key="RunConfiguration.WorkingDirectory.default">/Users/evan/Desktop/evan/paperarium/build-paperarium-design/PaperariumDesign.app/Contents/MacOS</value>

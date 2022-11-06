@@ -10,6 +10,7 @@
 
 #include "vulkan/vulkan.h"
 #include "VulkanInitializers.hpp"
+#include "VulkanQtTools.h"
 
 #include "vulkan_macro.h"
 

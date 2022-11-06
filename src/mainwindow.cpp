@@ -23,6 +23,15 @@ MainWindow::MainWindow(QWidget *parent)
     // window attributes
     setAttribute(Qt::WA_QuitOnClose);
     setAttribute(Qt::WA_TranslucentBackground);
+
+    // initialize the qvulkanwindow
+    vulkanWindow = new QVulkanWindow();
+    QWidget* vulkanWidget = QWidget::createWindowContainer(vulkanWindow);
+    vulkanWidget->setMouseTracking(true);
+    VulkanEngine::VulkanBaseEngine* engine = new VulkanEngine::VulkanBaseEngine();
+    vulkanWindow->setVulkanPtr(engine);
+    ui->horizontalLayout->addWidget(vulkanWidget);
+    vulkanWidget->show();
 }
 
 MainWindow::~MainWindow()

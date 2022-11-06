@@ -2,12 +2,12 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QWidget>
+#include "QVulkanWindow.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
-
-class OpenGLWidget;
 
 /**
  * @brief The MainWindow class
@@ -24,7 +24,6 @@ public:
 
 private:
     Ui::MainWindow *ui;
-
-    OpenGLWidget* openGLWidget = nullptr;
+    QVulkanWindow* vulkanWindow;
 };
 #endif // MAINWINDOW_H

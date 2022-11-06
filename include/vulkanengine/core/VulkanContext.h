@@ -1,5 +1,5 @@
 /*
- * VulcanContext.h
+ * VulkanContext.h
  * Created by: Evan Kirkiles
  * Created on: Fri Oct 28 2022
  * for Paperarium Design
@@ -14,6 +14,10 @@
 
 namespace VulkanEngine {
 
+/**
+ * @brief The basic Vulkan context exposed as an API
+ * 
+ */
 struct VULKANENGINE_EXPORT_API VulkanContext {
   vks::VulkanDevice *vulkanDevice = nullptr;
   VkCommandBuffer copyCmd = VK_NULL_HANDLE;
@@ -26,14 +30,14 @@ struct VULKANENGINE_EXPORT_API VulkanContext {
   uint32_t *pScreenHeight = nullptr;
 
   VkDevice &getDevice() {
-    return vulkanDevice->logicalDevice;
+    return vulkanDevice->logicalDevice;;
   }
 
   VkPhysicalDevice &getPhysicalDevice() {
     return vulkanDevice->physicalDevice;
   }
-}
+};
 
 }
 
-#endif // VULKAN_CONTEXT_H
+#endif /*  VULKAN_CONTEXT_H  */

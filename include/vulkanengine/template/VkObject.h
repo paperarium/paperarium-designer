@@ -1,14 +1,18 @@
-#ifndef VULKAN_OBJECT_H
-#define VULKAN_OBJECT_H
+#ifndef VK_OBJECT_H
+#define VK_OBJECT_H
 
 #include "vulkan_macro.h"
+#include "base_template.h"
+#include "filesystem_utils.h"
+#include "VulkanDevice.hpp"
+#include "VulkanContext.h"
 
 namespace VulkanEngine {
 
-interface VULKANENGINE_EXPORT_API VulkanObject {
+class VULKANENGINE_EXPORT_API VkObject {
 public:
-  VulkanObject() = default;
-  virtual ~VulkanObject() = default;
+  VkObject() = default;
+  virtual ~VkObject() = default;
 
   template<class T>
   static std::shared_ptr<T> New(VulkanContext* context) {
@@ -27,7 +31,7 @@ public:
 protected:
   VulkanContext* m_context = nullptr;
 };
-
+  
 }
 
-#endif // VULKAN_OBJECT_H
+#endif /* VK_OBJECT_H */

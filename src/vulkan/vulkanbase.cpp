@@ -6,177 +6,42 @@
  * 
  * Much code written by wjl's:
  * https://github.com/engineer1109/LearnVulkan/blob/master/source/base/VulkanBase.cxx
+ * And Sascha Willems:
+ * https://github.com/SaschaWillems/Vulkan/blob/master/source/base/vulkanexamplebase.cpp
  */
 
 #include "VulkanBase.h"
 
-namespace VULKAN_ENGINE {
+namespace VulkanEngine {
+
+/* -------------------------------------------------------------------------- */
+/*                            VULKAN INITIALIZATION                           */
+/* -------------------------------------------------------------------------- */
+// Process:
+//   1. createInstance
+//   2. pickPhysicalDevice
+//   3. createLogicalDevice
 
 /**
- * @brief Destroy the Vulkan Base:: Vulkan Base object
+ * @brief Initializes the Vulkan instance
  * 
- * Performs safe deletes on all Vulkan engine resources to safely quit from the
- * Vulkan instance.
+ * Creates the instance and picks a physical device to use for Vulkan, reading
+ * it as a logical device so we can easily access information about it.
  */
-VulkanBase::~VulkanBase() {
-  VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
-  vkDeviceWaitIdle(m_device);
-  VK_SAFE_DELETE(m_descriptorPool, vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr));
-  VK_SAFE_DELETE(m_renderPass, vkDestroyRenderPass(m_device, m_renderPass, nullptr));
-  for (auto &shaderModule : m_shaderModules)
-    VK_SAFE_DELETE(shaderModule, vkDestroyShaderModule(m_device, shaderModule, nullptr));
-  VK_SAFE_DELETE(m_pipelineCache, vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr));
-  VK_SAFE_DELETE(m_semaphores.presentComplete, vkDestroySemaphore(m_device, m_semaphores.presentComplete, nullptr));
-  VK_SAFE_DELETE(m_semaphores.renderComplete, vkDestroySemaphore(m_device, m_semaphores.renderComplete, nullptr));
-  for (auto &fence: m_waitFences)
-    VK_SAFE_DELETE(fence, vkDestroyFence(m_device, fence, nullptr));
-  destroySurface();
-  VK_SAFE_DELETE(m_cmdPool, vkDestroyCommandPool(m_device, m_cmdPool, nullptr));
-  DELETE_PTR(m_vulkanDevice);
-  VK_SAFE_DELETE(m_instance, vkDestroyInstance(m_instance, nullptr));
-}
-
-
 void VulkanBase::initVulkan() {
   createInstance();
   pickPhysicalDevice();
   createLogicalDevice();
 }
 
-
-void VulkanBase::prepare() {
-  prepareBase();
-}
+/* ----------------------------- IMPLEMENTATION ----------------------------- */
 
 /**
- * @brief Prepares the base Vulkan engine for rendering.
+ * @brief Builds the Vulkan instance itself
  * 
- * Initializes the swapchain, command pool, compmmand buffers, depth stencil,
- * render pass, pipeline cache, and frame buffer.
+ * Applies platform-specific extensions as well as validation layers (if we 
+ * are using debug mode) that enable easy cross-platform Vulkan development.
  */
-void VulkanBase::prepareBase() {
-  prepareFunctions();
-  initSwapchain();
-  createCommandPool();
-  setupSwapChain();
-  createCommandBuffers();
-  createSynchronizationPrimitives();
-  setupDepthStencil();
-  setupRenderPass();
-  createPipelineCache();
-  setupFrameBuffer();
-}
-
-
-/**
- * @brief Calls the render function until the Vulkan instance is quit
- * 
- * Continually polls for quit events while rendering frames and updating the
- * overlay. Once a quit event is received, vkDeviceWaitIdle.
- */
-void VulkanBase::renderLoop() {
-#if defined(VK_USE_PLATFORM_XCB_KHR)
-  xcb_flush(m_connection);
-  while (!m_quit) {
-    // read in messages––if quit message received, we need to quit
-    xcb_generic_event_t *event;
-    while ((event = xcb_poll_for_event(m_connection))) {
-      handleEvent(event);
-      free(event);
-    }
-    // otherwise, go ahead and render the frame
-    renderFrame();
-    updateOverlay();
-    m_scroll.up = false;
-    m_scroll.down = false;
-  }
-#elif defined(_WIN32)
-  MSG msg;
-  bool quitMessageReceived = false;
-  while (!quitMessageReceived) {
-    // read in messages––if quit message received, we need to quit
-    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-      if (msg.message == WM_QUIT) {
-        quitMessageReceived = true;
-        break;
-      }
-    }
-    // when not minimized, continue rendering frames
-    if (!IsIconic(m_window)) {
-      renderFrame();
-      updateOverlay();
-    }
-    m_scroll.up = false;
-    m_scroll.down = false;
-    if (m_quit) break;
-  }
-#endif
-  // once we have quit, just idle the Vulkan instance
-  if (m_device != VK_NULL_HANDLE) {
-    vkDeviceWaitIdle(m_device);
-  }
-}
-
-/**
- * @brief Renders a single frame to the device
- * 
- * Calls render() and draw(), and then updates the Vulkan state based on commands.
- * Measures frame render timing and stores frame times in m_frameTimer.
- */
-void VulkanBase::renderFrame() {
-  if (m_prepared and !m_pause) {
-    auto tStart = std::chrono::high_resolution_clock::now();
-    render();
-    draw();
-    updateCommand();
-    auto tEnd = std::chrono::high_resolution_clock::now();
-    auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
-    m_frameTimer = (float) tDiff / 1000.0f;
-    vkDeviceWaitIdle(m_device);
-  }
-}
-
-/**
- * @brief Base render function (TO BE OVERRIDDEN).
- */
-void VulkanBase::render() {}
-
-
-/**
- * @brief 
- * 
- */
-void VulkanBase::draw() {
-  if (m_stop || m_pause) return;
-  m_signalFrame = false;
-  prepareFrame();
-
-  // command buffer to be submitted to the queue
-  m_submitInfo.commandBufferCount = 1;
-  m_submitInfo.pCommandBuffers = &m_drawCmdBuffers[m_currentBuffer];
-
-  // now submit to ithe queue
-  if (m_prepared) VK_CHECK_RESULT(vkQueueSubmit(m_queue, 1, &m_submitInfo, VK_NULL_HANDLE));
-
-  submitFrame();
-  m_signalFrame = true;
-}
-
-/**
- * @brief Waits for the current frame to be rendered.
- * 
- * Sleeps the thread until the frame has been drawn. This frees up resources for
- * other processes, preventing the thread from blocking.
- */
-void VulkanBase::waitForCurrentFrameComplete() {
-  m_pause = true;
-  while (m_signalFrame == false) {
-    std::this_thread::sleep_for(std::chrono::microseconds(1));
-  }
-}
-
 void VulkanBase::createInstance() {
   VkApplicationInfo appInfo = {};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -185,6 +50,7 @@ void VulkanBase::createInstance() {
   appInfo.apiVersion = VK_API_VERSION_1_0;
   std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME };
 
+  // enable surface extensions depending on OS
 #if defined(_WIN32)
   instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #elif defined(_DIRECT2DISPLAY)
@@ -195,10 +61,34 @@ void VulkanBase::createInstance() {
   instanceExtensions.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_MACOS_MVK)
   instanceExtensions.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_HEADLESS_EXT)
+  instanceExtensions.push_back(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME);
 #endif
 
+  // get extensions supported by the instance and store for later use
+  uint32_t extCount = 0;
+  vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+  if (extCount > 0) {
+    std::vector<VkExtensionProperties> extensions(extCount);
+    if (vkEnumerateInstanceExtensionProperties(nullptr, &extCount, &extensions.front()) == VK_SUCCESS) {
+      for (VkExtensionProperties extension : extensions) {
+        m_supportedInstanceExtensions.push_back(extension.extensionName);
+      }
+    }
+  }
+
+	// SRS - When running on iOS/macOS with MoltenVK, enable
+  // VK_KHR_get_physical_device_properties2 if not already enabled 
+  // (required by VK_KHR_portability_subset)
+#if defined(VK_USE_PLATFORM_MACOS_MVK)
+  if (std::find(m_enabledInstanceExtensions.begin(), m_enabledInstanceExtensions.end(), VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) == m_enabledInstanceExtensions.end()) {
+    m_enabledInstanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+  }
+#endif
+
+  // enable requested instance extensions
   if (m_enabledInstanceExtensions.size() > 0) {
-    for (auto enabledExtension: m_enabledInstanceExtensions) {
+    for (const char* enabledExtension: m_enabledInstanceExtensions) {
       instanceExtensions.push_back(enabledExtension);
     }
   }
@@ -208,9 +98,21 @@ void VulkanBase::createInstance() {
   instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   instanceCreateInfo.pNext = NULL;
   instanceCreateInfo.pApplicationInfo = &appInfo;
+
+#if defined(VK_USE_PLATFORM_MACOS_MVK)
+  // SRS - When running on iOS/macOS with MoltenVK and VK_KHR_portability_enumeration is defined and supported by the instance, enable the extension and the flag
+  if (std::find(m_supportedInstanceExtensions.begin(), m_supportedInstanceExtensions.end(), VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) != m_supportedInstanceExtensions.end()) {
+    instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+    instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+  }
+#endif
+
   // add extensions
   if (instanceExtensions.size() > 0) {
-    if (m_debug) instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    if (m_debug) {
+      instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+      instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    }
     instanceCreateInfo.enabledExtensionCount = (uint32_t) instanceExtensions.size();
     instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
   }
@@ -240,6 +142,7 @@ void VulkanBase::createInstance() {
   }
   // finally, attempt to create the instance.
   m_result = vkCreateInstance(&instanceCreateInfo, nullptr, &m_instance);
+  VK_CHECK_RESULT(m_result);
 }
 
 /**
@@ -267,6 +170,25 @@ void VulkanBase::pickPhysicalDevice() {
   vkGetPhysicalDeviceProperties(m_physicalDevice, &m_deviceProperties);
   vkGetPhysicalDeviceFeatures(m_physicalDevice, &m_deviceFeatures);
   vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &m_deviceMemoryProperties);
+
+  // get extensions supported by the device and store for later use
+  uint32_t extCount = 0;
+  vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extCount, nullptr);
+  if (extCount > 0) {
+    std::vector<VkExtensionProperties> extensions(extCount);
+    if (vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS) {
+      for (VkExtensionProperties extension : extensions) {
+        m_supportedDeviceExtensions.push_back(extension.extensionName);
+      }
+    }
+  }
+
+#if defined(VK_USE_PLATFORM_MACOS_MVK)
+  // SRS - When running on iOS/macOS with MoltenVK and VK_KHR_portability_subset is defined and supported by the instance, enable the extension
+  if (std::find(m_supportedDeviceExtensions.begin(), m_supportedDeviceExtensions.end(), "VK_KHR_portability_subset") != m_supportedInstanceExtensions.end()) {
+    m_enabledDeviceExtensions.push_back("VK_KHR_portability_subset");
+  }
+#endif
 
   // we can override actual features to enable for logical device creation,
   // if we want to do some testing.
@@ -309,7 +231,6 @@ void VulkanBase::createLogicalDevice() {
 
   // set up submit info structure
   // semaphores will stay the same during application lifetime
-  // command buffer submission info is set by each example
   m_submitInfo = vks::initializers::submitInfo();
   m_submitInfo.pWaitDstStageMask = &m_submitPipelineStages;
   m_submitInfo.waitSemaphoreCount = 1;
@@ -318,42 +239,106 @@ void VulkanBase::createLogicalDevice() {
   m_submitInfo.pSignalSemaphores = &m_semaphores.renderComplete;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                          VULKAN SWAPCHAIN CREATION                         */
+/* -------------------------------------------------------------------------- */
+// Process:
+//  1.  prepareFunctions
+//  2.  initSwapchain
+//  3.  createCommandPool
+//  4.  createSwapChain
+//  5.  createCommandBuffers
+//  6.  createSynchronizationPrimitives
+//  7.  createDepthStencil
+//  8.  createRenderPass
+//  9.  createPipelineCache
+//  10. createFramebuffers
+
 /**
- * @brief 
+ * @brief Wrapper around the prepareBase function
  */
-void VulkanBase::initSwapchain() {
-#if defined(VK_USE_PLATFORM_XCB_KHR)
-  m_swapChain.initSurface(m_connection, m_window);
-#elif defined(_WIN32)
-  m_swapChain.initSurface(m_windowInstance, m_window);
-#endif
+void VulkanBase::prepare() {
+  prepareBase();
 }
 
 /**
- * @brief Builds the command pool
+ * @brief Prepares the base Vulkan engine for rendering.
  * 
+ * Initializes the swapchain, command pool, compmmand buffers, depth stencil,
+ * render pass, pipeline cache, and frame buffer.
+ */
+void VulkanBase::prepareBase() {
+  prepareFunctions();
+  initSwapchain();
+  createCommandPool();
+  createSwapChain();
+  createCommandBuffers();
+  createSynchronizationPrimitives();
+  createDepthStencil();
+  createRenderPass();
+  createPipelineCache();
+  createFramebuffers();
+}
+
+/* ----------------------------- IMPLEMENTATIONS ---------------------------- */
+
+/**
+ * @brief Initializes the Vulkan swap chain wrapper
+ * 
+ * This creates a link between the surface and our Vulkan logic. We can then
+ * use the VulkanSwapchain wrapper to create a new swapchain, building upon
+ * the previous one, without having to manage everything ourselves.
+ */
+void VulkanBase::initSwapchain() {
+#if defined(_WIN32)
+  m_swapChain.initSurface(m_windowInstance, m_window);
+#elif (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
+    m_swapChain.initSurface(reinterpret_cast<void *>(m_winId));
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+  m_swapChain.initSurface(m_connection, m_window);
+#endif
+
+}
+
+/**
+ * @brief Creates the Vulkan command pool
+ * 
+ * A command pool manages the memory required to store buffers, and command
+ * buffers are then allocated from them. The command pool can be initialized
+ * with settings that tell the program about how often command buffers will be
+ * rewritten to potentially optimize memory usage.
  */
 void VulkanBase::createCommandPool() {
   VkCommandPoolCreateInfo cmdPoolInfo = {};
   cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
   cmdPoolInfo.queueFamilyIndex = m_swapChain.queueNodeIndex;
+  // need this flag to be able to record a command buffer every frame
   cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &m_cmdPool));
 }
 
 
 /**
- * @brief 
+ * @brief Creates the Vulkan swap chain
  * 
+ * A swapchain is simply a queue of images waiting to be shown––its general
+ * purpose is to synchronize the presentation of images with the refresh rate of
+ * the screen. All creation logic is handled for us by the VulkanSwapchain
+ * ease-of-use wrapper.
+ * 
+ * If a swap chain already exists for the surface, this function retires it.
  */
-void VulkanBase::setupSwapChain() {
+void VulkanBase::createSwapChain() {
   m_swapChain.create(&m_width, &m_height, false);
 }
 
 
 /**
- * @brief 
+ * @brief Creates the Vulkan command buffers
  * 
+ * Commands in Vulkan are not executed directly using functions, but are rather
+ * pre-defined in command buffer objects to allow more deterministic behavior.
+ * Here, we create a command buffer for each of our swap chain's images.
  */
 void VulkanBase::createCommandBuffers() {
   m_drawCmdBuffers.resize(m_swapChain.imageCount);
@@ -366,8 +351,12 @@ void VulkanBase::createCommandBuffers() {
 }
 
 /**
- * @brief 
+ * @brief Creates the Vulkan fences
  * 
+ * Fences are used in Vulkan to synchronize code across the CPU and GPU. We implement
+ * a fence for each command buffer, and thus for each swap chain image. They
+ * serve to inform the CPU when the GPU has finished drawing each image, i.e.
+ * when an image in the swapchain is ready to be displayed.
  */
 void VulkanBase::createSynchronizationPrimitives() {
   VkFenceCreateInfo fenceCreateInfo = vks::initializers::fenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
@@ -377,8 +366,20 @@ void VulkanBase::createSynchronizationPrimitives() {
   }
 }
 
-
-void VulkanBase::setupDepthStencil() {
+/**
+ * @brief Creates the Vulkan depth stencil for the render pass
+ * 
+ * A depth buffer is an additional attachment that stores the depth for every position,
+ * just like the color attachment stores the color of every position. Every time
+ * the rasterizer produces a fragment, the depth test will check if the new
+ * fragment is closer than the previous one. If it isn't, then the new fragment
+ * is discarded. A fragment that passes the depth test writes its own depth to
+ * the depth buffer.
+ * 
+ * In this function, we allocate space in the device for a depth image to be used
+ * for depth testing our swapchain images.
+ */
+void VulkanBase::createDepthStencil() {
   VkImageCreateInfo imageCI{};
   imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
   imageCI.imageType = VK_IMAGE_TYPE_2D;
@@ -417,8 +418,17 @@ void VulkanBase::setupDepthStencil() {
   VK_CHECK_RESULT(vkCreateImageView(m_device, &imageViewCI, nullptr, &m_depthStencil.view));
 }
 
-void VulkanBase::setupRenderPass() {
+/**
+ * @brief Creates the Vulkan render pass
+ * 
+ * A render pass tells Vulkan about the framebuffer attachments that will be
+ * used while rendering. We need to specify how many color and depth buffers there
+ * will be, how many samples to use for each of them, and how their contents
+ * should be handled throughout the rendering operations.
+ */
+void VulkanBase::createRenderPass() {
   std::array<VkAttachmentDescription, 2> attachments = {};
+
   // color attachment
   attachments[0].format = m_swapChain.colorFormat;
   attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -428,6 +438,10 @@ void VulkanBase::setupRenderPass() {
   attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  VkAttachmentReference colorReference = {};
+  colorReference.attachment = 0;
+  colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
   // depth attachment
   attachments[1].format = m_depthFormat;
   attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -437,15 +451,11 @@ void VulkanBase::setupRenderPass() {
   attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-  VkAttachmentReference colorReference = {};
-  colorReference.attachment = 0;
-  colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
   VkAttachmentReference depthReference = {};
   depthReference.attachment = 1;
   depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+  // create our subpass with color and depth attachments
   VkSubpassDescription subpassDescription = {};
   subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   subpassDescription.colorAttachmentCount = 1;
@@ -466,7 +476,6 @@ void VulkanBase::setupRenderPass() {
   dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
   dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
   dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
   dependencies[1].srcSubpass = 0;
   dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
   dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -475,7 +484,7 @@ void VulkanBase::setupRenderPass() {
   dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
   dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-  // finally build the render pass
+  // finally build the render pass with a single subpass, the one created above
   VkRenderPassCreateInfo renderPassInfo = {};
   renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -487,13 +496,33 @@ void VulkanBase::setupRenderPass() {
   VK_CHECK_RESULT(vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_renderPass));
 }
 
+/**
+ * @brief Creates the Vulkan pipeline cache
+ * 
+ * Pipeline cache objects allow the result of pipeline construction to be reused 
+ * between pipelines and between runs of an application. Reuse between pipelines
+ * is achieved by passing the same pipeline cache object when creating multiple
+ * related pipelines. Reuse across runs of an application is achieved by retrieving
+ * pipeline cache contents in one run of an application, saving the contents, and
+ * using them to preinitialize a pipeline cache on a subsequent run. 
+ */
 void VulkanBase::createPipelineCache() {
   VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
   pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
   VK_CHECK_RESULT(vkCreatePipelineCache(m_device, &pipelineCacheCreateInfo, nullptr, &m_pipelineCache));
 }
 
-void VulkanBase::setupFrameBuffer() {
+/**
+ * @brief Creates the Vulkan framebuffers
+ * 
+ * A framebuffer object references all of the VkImageView objects that represent
+ * the attachments in a render subpass. As we're using both a color and a depth
+ * attachment in our only subpass, we need to specify that we have 2 attachments
+ * to our framebuffer create function. Then, we must create a framebuffer for
+ * all images in the swap chain––as each will be different and require picking
+ * the correct color/depth image from the framebuffer.
+ */
+void VulkanBase::createFramebuffers() {
   VkImageView attachments[2];
 
   // Depth/stencil attachment is the same for all frame buffers
@@ -517,6 +546,245 @@ void VulkanBase::setupFrameBuffer() {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                             VULKAN DESTRUCTION                             */
+/* -------------------------------------------------------------------------- */
+// Some components of our Vulkan instance need to be manually cleaned up by us
+// when we destroy the Vulkan instance.
+
+/**
+ * @brief Destroy the Vulkan Base::VulkanBase object
+ * 
+ * Performs safe deletes on all Vulkan engine resources to safely quit from the
+ * Vulkan instance.
+ */
+VulkanBase::~VulkanBase() {
+  VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
+  vkDeviceWaitIdle(m_device);
+  VK_SAFE_DELETE(m_descriptorPool, vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr));
+  VK_SAFE_DELETE(m_renderPass, vkDestroyRenderPass(m_device, m_renderPass, nullptr));
+  for (auto &shaderModule : m_shaderModules)
+    VK_SAFE_DELETE(shaderModule, vkDestroyShaderModule(m_device, shaderModule, nullptr));
+  VK_SAFE_DELETE(m_pipelineCache, vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr));
+  VK_SAFE_DELETE(m_semaphores.presentComplete, vkDestroySemaphore(m_device, m_semaphores.presentComplete, nullptr));
+  VK_SAFE_DELETE(m_semaphores.renderComplete, vkDestroySemaphore(m_device, m_semaphores.renderComplete, nullptr));
+  for (auto &fence: m_waitFences)
+    VK_SAFE_DELETE(fence, vkDestroyFence(m_device, fence, nullptr));
+  destroySurface();
+  VK_SAFE_DELETE(m_cmdPool, vkDestroyCommandPool(m_device, m_cmdPool, nullptr));
+  delete_ptr(m_vulkanDevice);
+  VK_SAFE_DELETE(m_instance, vkDestroyInstance(m_instance, nullptr));
+}
+
+/* ----------------------------- IMPLEMENTATION ----------------------------- */
+
+/**
+ * @brief Destroys the swap chain and all its dependencies
+ * 
+ * This fully destroys the swap chain, removing its link to the surface we defined
+ * before. Therefore, we only use this when we want to entirely clean up our
+ * Vulkan instance. Otherwise, you are OK just calling m_swapChain.create(...)
+ * to recreate the swapChain. We also delete the depth stencil attachment,
+ * the command buffers, and all of the frame buffers.
+ */
+void VulkanBase::destroySurface() {
+  if (!m_prepared) return;
+  LOGI("destroySurface");
+  m_swapChain.cleanup();
+  destroyCommandBuffers();
+  VK_SAFE_DELETE(m_depthStencil.view, vkDestroyImageView(m_device, m_depthStencil.view, nullptr));
+  VK_SAFE_DELETE(m_depthStencil.image, vkDestroyImage(m_device, m_depthStencil.image, nullptr));
+  VK_SAFE_DELETE(m_depthStencil.mem, vkFreeMemory(m_device, m_depthStencil.mem, nullptr));
+  for (uint32_t i = 0; i < m_frameBuffers.size(); i++)
+    VK_SAFE_DELETE(m_frameBuffers[i], vkDestroyFramebuffer(m_device, m_frameBuffers[i], nullptr));
+  m_prepared = false;
+}
+
+/**
+ * @brief Destroys the command buffers
+ * 
+ * Frees the command buffers holding the commands for each of our swap chain's
+ * images. Resets the size of m_drawCmdBuffers to 0.
+ */
+void VulkanBase::destroyCommandBuffers() {
+  if (m_drawCmdBuffers.size() > 0)
+    vkFreeCommandBuffers(m_device, m_cmdPool, static_cast<uint32_t>(m_drawCmdBuffers.size()), m_drawCmdBuffers.data());
+  m_drawCmdBuffers.resize(0);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        VULKAN SWAP CHAIN RECREATION                        */
+/* -------------------------------------------------------------------------- */
+// We want to be able to support window resizing, which means we need to be capable
+// of recreating our swap chain for the new dimensions (as well as all of the
+// components that depend on the swap chain itself).
+
+/**
+ * @brief Handles swap chain recreation on window resize
+ * 
+ * First, waits for the device to enter an idle state. Then, rebuilds the swap
+ * chain, recreates the attachments and frame buffers, and then recreates
+ * the command buffers. Idles once prepared.
+ */
+void VulkanBase::windowResize() {
+  if (!m_prepared) return;
+  m_prepared = false;
+
+  // ensure all operations on the device have been finished before destroying resources
+  vkDeviceWaitIdle(m_device);
+
+  // recreate the swap chain
+  m_width = m_destWidth;
+  m_height = m_destHeight;
+  createSwapChain();
+
+  // recreate the frame buffers
+  vkDestroyImageView(m_device, m_depthStencil.view, nullptr);
+  vkDestroyImage(m_device, m_depthStencil.image, nullptr);
+  vkFreeMemory(m_device, m_depthStencil.mem, nullptr);
+  createDepthStencil();
+  for (uint32_t i = 0; i < m_frameBuffers.size(); i++)
+    vkDestroyFramebuffer(m_device, m_frameBuffers[i], nullptr);
+  createFramebuffers();
+
+  // command buffers need to be recreated as they may store references to the
+  // recreated frame buffer
+  destroyCommandBuffers();
+  createCommandBuffers();
+  buildCommandBuffers();
+
+  vkDeviceWaitIdle(m_device);
+  m_prepared = true;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              VULKAN RENDERING                              */
+/* -------------------------------------------------------------------------- */
+// Our actual render logic follows, in which we prepare a frame, submit a
+// command buffer to it to begin processing, and then submit the frame itself to
+// the surface.
+// !TODO: Move events over to QEvents
+
+/**
+ * @brief Calls the render function until the Vulkan instance is quit
+ * 
+ * Continually polls for quit events while rendering frames and updating the
+ * overlay. Once a quit event is received, vkDeviceWaitIdle.
+ */
+void VulkanBase::renderLoop() {
+  while (!m_quit) {
+    renderFrame();
+    updateOverlay();
+    m_scroll.up = false;
+    m_scroll.down = false;
+  }
+// #if defined(VK_USE_PLATFORM_XCB_KHR)
+//   xcb_flush(m_connection);
+//   while (!m_quit) {
+//     // read in messages––if quit message received, we need to quit
+//     xcb_generic_event_t *event;
+//     while ((event = xcb_poll_for_event(m_connection))) {
+//       handleEvent(event);
+//       free(event);
+//     }
+//     // otherwise, go ahead and render the frame
+//     renderFrame();
+//     updateOverlay();
+//     m_scroll.up = false;
+//     m_scroll.down = false;
+//   }
+// #elif defined(_WIN32)
+//   MSG msg;
+//   bool quitMessageReceived = false;
+//   while (!quitMessageReceived) {
+//     // read in messages––if quit message received, we need to quit
+//     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+//       TranslateMessage(&msg);
+//       DispatchMessage(&msg);
+//       if (msg.message == WM_QUIT) {
+//         quitMessageReceived = true;
+//         break;
+//       }
+//     }
+//     // when not minimized, continue rendering frames
+//     if (!IsIconic(m_window)) {
+//       renderFrame();
+//       updateOverlay();
+//     }
+//     m_scroll.up = false;
+//     m_scroll.down = false;
+//     if (m_quit) break;
+//   }
+// #elif (defined(VK_USE_PLATFORM_MACOS_MVK))
+//   [NSApp run];
+// #endif
+  // once we have quit, just idle the Vulkan instance
+  if (m_device != VK_NULL_HANDLE) {
+    vkDeviceWaitIdle(m_device);
+  }
+}
+
+/**
+ * @brief Renders a single frame to the device
+ * 
+ * Calls render() and draw(), and then updates the Vulkan state based on commands.
+ * Measures frame render timing and stores frame times in m_frameTimer.
+ */
+void VulkanBase::renderFrame() {
+  if (m_prepared and !m_pause) {
+    auto tStart = std::chrono::high_resolution_clock::now();
+    render(); // perform custom render logic
+    draw(); // perform base frame preparation and submission.
+    updateCommand(); // update command buffers
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+    m_frameTimer = (float) tDiff / 1000.0f;
+    vkDeviceWaitIdle(m_device);
+  }
+}
+
+/* ----------------------------- IMPLEMENTATION ----------------------------- */
+
+/**
+ * @brief Base Vulkan render function (OVERRIDE THIS).
+ */
+void VulkanBase::render() {}
+
+/**
+ * @brief Draws the rendered frame to the surface
+ * 
+ * Prepares a frame to acquire the next image from the swap chain. Then submits
+ * the command buffers which define our color and depth attachments, telling
+ * how to draw the image acquired from the swap chain. Finally, submits
+ * the frame once the command buffers have been run, drawing the frame to
+ * the surface!
+ */
+void VulkanBase::draw() {
+  if (m_stop || m_pause) return;
+  m_signalFrame = false;
+  prepareFrame();
+
+  // command buffer to be submitted to the queue
+  m_submitInfo.commandBufferCount = 1;
+  m_submitInfo.pCommandBuffers = &m_drawCmdBuffers[m_currentBuffer];
+
+  // now submit to ithe queue
+  if (m_prepared) VK_CHECK_RESULT(vkQueueSubmit(m_queue, 1, &m_submitInfo, VK_NULL_HANDLE));
+
+  submitFrame();
+  m_signalFrame = true;
+}
+
+/* --------------------------- DEEP IMPLEMENTATION -------------------------- */
+
+/**
+ * @brief Acquires the next image in the Vulkan swap chain.
+ * 
+ * If the swap chain is no longer compatible with the surface (resized), we also
+ * handle recreation here, as m_swapChain.acquireNextImage will error out in
+ * that case. Otherwise, we are ready to submit the image from the swap chain
+ * to the surface.
+ */
 void VulkanBase::prepareFrame() {
   if (m_pause or !m_prepared) return;
   // acquire the next image from the swap chain
@@ -531,6 +799,14 @@ void VulkanBase::prepareFrame() {
   VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
 }
 
+/**
+ * @brief Submits an image from the Vulkan swap chain to the surface
+ * 
+ * This function actually presents the swap chain's image to the configured
+ * surface. We also listen for window resize events here. This function
+ * is predicated on the render complete semaphore, which lets us know when
+ * the image is completed and ready to show.
+ */
 void VulkanBase::submitFrame() {
   if (m_pause) return;
   VkResult res = m_swapChain.queuePresent(m_queue, m_currentBuffer, m_semaphores.renderComplete);
@@ -547,63 +823,41 @@ void VulkanBase::submitFrame() {
   VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
 }
 
-void VulkanBase::destroySurface() {
-  if (!m_prepared) return;
-  LOGI("destroySurface");
-  m_swapChain.cleanup();
-  destroyCommandBuffers();
-  VK_SAFE_DELETE(m_depthStencil.view, vkDestroyImageView(m_device, m_depthStencil.view, nullptr));
-  VK_SAFE_DELETE(m_depthStencil.image, vkDestroyImage(m_device, m_depthStencil.image, nullptr));
-  VK_SAFE_DELETE(m_depthStencil.mem, vkFreeMemory(m_device, m_depthStencil.mem, nullptr));
-  for (uint32_t i = 0; i < m_frameBuffers.size(); i++)
-    VK_SAFE_DELETE(m_frameBuffers[i], vkDestroyFramebuffer(m_device, m_frameBuffers[i], nullptr));
-  m_prepared = false;
-}
+/* -------------------------------------------------------------------------- */
+/*                                   HELPERS                                  */
+/* -------------------------------------------------------------------------- */
 
-void VulkanBase::destroyCommandBuffers() {
-  if (m_drawCmdBuffers.size() > 0)
-    vkFreeCommandBuffers(m_device, m_cmdPool, static_cast<uint32_t>(m_drawCmdBuffers.size()), m_drawCmdBuffers.data());
-  m_drawCmdBuffers.resize(0);
-}
-
-void VulkanBase::windowResize() {
-  if (!m_prepared) return;
-  m_prepared = false;
-
-  // ensure all operations on the device have been finished before destroying resources
-  vkDeviceWaitIdle(m_device);
-
-  // recreate the swap chain
-  m_width = m_destWidth;
-  m_height = m_destHeight;
-  setupSwapChain();
-
-  // recreate the frame buffers
-  vkDestroyImageView(m_device, m_depthStencil.view, nullptr);
-  vkDestroyImage(m_device, m_depthStencil.image, nullptr);
-  vkFreeMemory(m_device, m_depthStencil.mem, nullptr);
-  setupDepthStencil();
-  for (uint32_t i = 0; i < m_frameBuffers.size(); i++)
-    vkDestroyFramebuffer(m_device, m_frameBuffers[i], nullptr);
-  setupFrameBuffer();
-
-  // command buffers need to be recreated as they may store references to the
-  // recreated frame buffer
-  destroyCommandBuffers();
-  createCommandBuffers();
-  buildCommandBuffers();
-
-  vkDeviceWaitIdle(m_device);
-  m_prepared = true;
-}
-
+/**
+ * @brief Handles mouse movement. I think I don't need this.
+ * 
+ * @param x 
+ * @param y 
+ */
 void VulkanBase::handleMouseMove(float x, float y) {
   m_mousePos = glm::vec2(x, y);
 }
 
+/**
+ * @brief Runs a saved Vulkan function
+ * 
+ * @param i 
+ */
 void VulkanBase::runFunction(int i) {
   if (i < m_functions.size()) {
     m_functions[i]();
+  }
+}
+
+/**
+ * @brief Waits for the current frame to be rendered.
+ * 
+ * Sleeps the thread until the frame has been drawn. This frees up resources for
+ * other processes, preventing the thread from blocking.
+ */
+void VulkanBase::waitForCurrentFrameComplete() {
+  m_pause = true;
+  while (m_signalFrame == false) {
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
 }
 

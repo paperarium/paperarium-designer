@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/shaders">
+        <file>base/uioverlay.frag.spv</file>
+        <file>base/uioverlay.vert.spv</file>
+    </qresource>
+</RCC>

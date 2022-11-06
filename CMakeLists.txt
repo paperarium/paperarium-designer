@@ -5,8 +5,6 @@ project(PaperariumDesign VERSION 0.1 LANGUAGES CXX)
 
 # Set CMake variables
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Turn on Qt-related auto compiler options
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -14,9 +12,17 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC_SEARCH_PATHS ui/)
 set(AUTOMOC_PATH_PREFIX ON)
 
+# Add some definitions
+add_definitions(-DSTBI_NO_DDS)
+add_definitions(-DUSE_STD_FILESYSTEM)  # For Old Compilers as GCC 7 change to -DUSE_STD_EXPERIMENTAL_FILESYSTEM
+add_definitions(-D_USE_MATH_DEFINES)
+add_definitions(-DPROJECT_ABSOLUTE_PATH="${PROJECT_SOURCE_DIR}")
+
 # Include Qt packages
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Gui)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Gui)
+# Include ImGui for GUIs in Vulkan
+find_package(imgui REQUIRED)
 # Include Vulkan so we can determine how to bundle
 find_package(Vulkan COMPONENTS glslc REQUIRED)
 
@@ -90,9 +96,11 @@ elseif(LINUX)
         find_package(XCB REQUIRED)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_XCB_KHR")
     endif(USE_D2D_WSI)
+    set(ADDITIONAL_LIBRARIES ${XCB_LIBRARIES} ${DIRECTFB_LIBRARIES} ${WAYLAND_CLIENT_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 # Apple / macOS
 elseif(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_MACOS_MVK -DVK_EXAMPLE_XCODE_GENERATED")
+    # set(ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES} "-framework AppKit" "-framework QuartzCore")
 endif(WIN32)
 
 # Set preprocessor defines
@@ -104,23 +112,55 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Compiler specific stuff
+if (MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+elseif (APPLE)
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc -xobjective-c++")
+endif (MSVC)
+
+# find XCB on Linux systems
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    message("Linux build needs libxcb-dev.")
+    include(FindPkgConfig)
+    pkg_check_modules(XCB xcb)
+    if (XCB_FOUND)
+        message("Found XCB ${XCB_LDFLAGS}")
+    else()
+        message("You may need to install libxcb-dev!")
+    endif()
+endif()
 
 # --------------------------------- SOURCES --------------------------------- #
 
 # Locate different types of files
 set(PAPERARIUM_DESIGN_SRCS
-    src/mainwindow.cpp
+    src/vulkan/core/VulkanDescriptorSet.cpp
+    src/vulkan/core/VulkanPipelines.cpp
+    src/vulkan/template/VulkanShader.cpp
+    src/vulkan/utils/VulkanUIOverlay.cpp
+    src/vulkan/utils/VulkanTools.cpp
+    src/vulkan/utils/VulkanQtTools.cpp
     src/vulkan/VulkanBase.cpp
-    src/vulkan/VulkanWindow.cpp
+    src/vulkan/VulkanBaseEngine.cpp
+    src/vulkan/QVulkanWindow.cpp
+    src/mainwindow.cpp
 )
 set(PAPERARIUM_DESIGN_HEADERS
-    include/mainwindow.h
-    include/vulkanengine/render_common.h
-    include/vulkanengine/vulkan_macro.h
-    include/vulkanengine/VulkanContext.h
-    include/vulkanengine/VulkanBase.h
-    include/vulkanengine/VulkanObject.h
-    include/vulkanengine/VulkanWindow.h
+    include/vulkanengine/common/base_template.h
+    include/vulkanengine/common/filesystem_utils.h
+    include/vulkanengine/common/render_common.h
+    include/vulkanengine/common/vertex_struct.h
+    include/vulkanengine/common/vulkan_macro.h
+    include/vulkanengine/core/VulkanContext.h
+    include/vulkanengine/core/VulkanDescriptorSet.h
+    include/vulkanengine/core/VulkanPipelines.h
+    include/vulkanengine/core/VulkanVertexDescriptions.h
+    include/vulkanengine/template/VkObject.h
+    include/vulkanengine/template/VulkanShader.h
     include/vulkanengine/utils/keycodes.hpp
     include/vulkanengine/utils/VulkanAndroid.h
     include/vulkanengine/utils/VulkanBuffer.hpp
@@ -129,6 +169,12 @@ set(PAPERARIUM_DESIGN_HEADERS
     include/vulkanengine/utils/VulkanInitializers.hpp
     include/vulkanengine/utils/VulkanSwapChain.hpp
     include/vulkanengine/utils/VulkanTools.h
+    include/vulkanengine/utils/VulkanQtTools.h
+    include/vulkanengine/utils/VulkanUIOverlay.h
+    include/vulkanengine/VulkanBase.h
+    include/vulkanengine/VulkanBaseEngine.h
+    include/vulkanengine/QVulkanWindow.h
+    include/mainwindow.h
 )
 set(PAPERARIUM_DESIGN_UIS
     ui/mainwindow.ui
@@ -136,7 +182,9 @@ set(PAPERARIUM_DESIGN_UIS
 set(PAPERARIUM_DESIGN_TSS
     lang/PaperariumDesign_en_US.ts
 )
-set(PAPERARIUM_DESIGN_RESOURCES)
+set(PAPERARIUM_DESIGN_RESOURCES
+    resources/shaders/shaders.qrc
+    resources/fonts/fonts.qrc)
 # Concatenate all into project sources
 set(PAPERARIUM_DESIGN_ALL_SOURCES
     main.cpp
@@ -175,11 +223,16 @@ target_include_directories(
     PRIVATE
     include
     include/vulkanengine
+    include/vulkanengine/common
+    include/vulkanengine/core
+    include/vulkanengine/template
     include/vulkanengine/utils
     ${Vulkan_INCLUDE_DIRS}
     ${ASSIMP_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
-    ${OPENMP_INCLUDE_DIRS})
+    ${OPENMP_INCLUDE_DIRS}
+    ${IMGUI_INCLUDE_DIRS}
+    ${ADDITIONAL_INCLUDE_DIRS})
 
 # ----------------------------- LINK LIBRARIES ------------------------------ #
 
@@ -189,10 +242,12 @@ target_link_libraries(
     PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Gui
+    imgui::imgui
     ${ASSIMP_LIBRARIES}
     ${Vulkan_LIBRARIES}
     ${GLM_LIBRARIES}
-    ${OPENMP_LIBRARIES})
+    ${OPENMP_LIBRARIES}
+    ${ADDITIONAL_LIBRARIES})
 
 # ---------------------------- BUNDLE BUILD + INSTALL ----------------------- #
 

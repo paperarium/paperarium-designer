@@ -11,14 +11,17 @@
 #ifndef VULKANBASE_H
 #define VULKANBASE_H
 
+#include "render_common.h"
+#include "filesystem_utils.h"
 #include "vulkan_macro.h"
+#include "base_template.h"
 
 #include "VulkanTools.h"
 #include "VulkanDevice.hpp"
 #include "VulkanSwapChain.hpp"
 #include "keycodes.hpp"
 
-namespace VULKAN_ENGINE {
+namespace VulkanEngine {
 
 class VulkanBase {
 public: // INIT METHODS
@@ -37,7 +40,7 @@ public: // INIT METHODS
     virtual void updateOverlay() {}
     virtual void render();
     virtual void draw();
-    virtual void updateCommand() {}
+    virtual void updateCommand() {};
 
     void waitForCurrentFrameComplete();
     void pause() { m_pause = true; }
@@ -52,13 +55,13 @@ protected: // INIT METHODS
     void createLogicalDevice();
     void initSwapchain();
     void createCommandPool();
-    void setupSwapChain();
+    void createSwapChain();
     void createCommandBuffers();
     void createSynchronizationPrimitives();
-    void setupDepthStencil();
-    void setupRenderPass();
+    void createDepthStencil();
+    void createRenderPass();
     void createPipelineCache();
-    void setupFrameBuffer();
+    void createFramebuffers();
     virtual void buildCommandBuffers() {};
     void prepareFrame();
     void submitFrame();
@@ -67,54 +70,41 @@ public: // OPERATION METHODS
     void destroySurface();
     void destroyCommandBuffers();
     void windowResize();
-    void handleMouseMove(float x, float y);
 
     virtual void keyPressed(uint32_t) {}
     virtual void prepareFunctions() {}
     virtual void runFunction(int i);
-#if defined(_WIN32)
-    HWND setupWindow();
-    void handleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-    bool m_resizing = false;
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-    void initxcbConnection();
-    xcb_window_t setupWindow();
-    void handleEvent(const xcb_generic_event_t *event);
-#endif
 
+    // Mouse listeners / handlers
+    void handleMouseMove(float x, float y);
     void setMouseButtonLeft(bool value) { m_mouseButtons.left = value; }
     void setMouseButtonRight(bool value) { m_mouseButtons.right = value; }
     void setMouseButtonMiddle(bool value) { m_mouseButtons.middle = value; }
 
-#if defined(_WIN32)
-    void setWindow(HWND window) { m_window = window; }
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-    void setWindow(xcb_window_t window) { m_window = window; }
-#endif
+    // Sets the window id
+    void setWindow(uint64_t winId) { m_winId = winId; }
 
 protected:
-#if defined(_WIN32)
-    HWND m_window = NULL;
-    HINSTANCE m_windowInstance = NULL;
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-    xcb_connection_t *m_connection = nullptr;
-    xcb_screen_t *m_screen = nullptr;
-    xcb_window_t m_window = NULL;
-    xcb_intern_atom_reply_t *m_atom_wm_delete_window = nullptr;
-#endif
 
+    // Window / surface id
+    uint64_t m_winId;
+
+
+    // Viewport dimensions
     uint32_t m_width = 1280;
     uint32_t m_height = 720;
     uint32_t m_destWidth = 1280;
     uint32_t m_destHeight = 720;
 
-    bool m_debug = false;
+    // Vulkan instance states
+    bool m_debug = true;
     bool m_stop = false;
     bool m_quit = false;
     bool m_pause = false;
     bool m_prepared = false;
     bool m_signalFrame = true;
 
+    // Vulkan components
     VkResult m_result = VK_SUCCESS;
     VkInstance m_instance = VK_NULL_HANDLE;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
@@ -122,16 +112,25 @@ protected:
     VkQueue m_queue = VK_NULL_HANDLE;
     VkCommandPool m_cmdPool = VK_NULL_HANDLE;
 
+    VkFormat m_depthFormat = VK_FORMAT_D16_UNORM_S8_UINT;
+    VkSubmitInfo m_submitInfo;
+    VkPipelineStageFlags m_submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    // Physical device metadata
+    VkPhysicalDeviceProperties m_deviceProperties;
+    VkPhysicalDeviceFeatures m_deviceFeatures;
+    VkPhysicalDeviceMemoryProperties m_deviceMemoryProperties;
+    vks::VulkanDevice *m_vulkanDevice = nullptr;
+
+    // Features / extensions enabled for our Vulkan instance
+    std::vector<std::string> m_supportedInstanceExtensions;
+    std::vector<std::string> m_supportedDeviceExtensions;
     std::vector<const char *> m_enabledDeviceExtensions;
     std::vector<const char *> m_enabledInstanceExtensions;
     VkPhysicalDeviceFeatures m_enabledFeatures;
     void *m_deviceCreatepNextChain = nullptr;
 
-    VkPhysicalDeviceProperties m_deviceProperties;
-    VkPhysicalDeviceFeatures m_deviceFeatures;
-    VkPhysicalDeviceMemoryProperties m_deviceMemoryProperties;
-
-    vks::VulkanDevice *m_vulkanDevice = nullptr;
+    // The swap chain for drawing to the screen
     VulkanSwapChain m_swapChain;
 
     struct RenderSemaphores {
@@ -147,11 +146,8 @@ protected:
         VkImageView view = VK_NULL_HANDLE;
     } m_depthStencil;
 
+    // Fences for synchronizing CPU-GPU communication
     std::vector<VkFence> m_waitFences;
-
-    VkFormat m_depthFormat = VK_FORMAT_D16_UNORM_S8_UINT;
-    VkSubmitInfo m_submitInfo;
-    VkPipelineStageFlags m_submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     // Render context
     std::vector<VkCommandBuffer> m_drawCmdBuffers;
@@ -162,30 +158,32 @@ protected:
     std::vector<VkShaderModule> m_shaderModules;
     VkPipelineCache m_pipelineCache;
 
+    // Mouse positions
     glm::vec2 m_mousePos;
     glm::vec2 m_mousePosOld;
-
     float m_distance = 0.f;
     float m_oldDistance = 0.f;
-
-    struct Settings {
-        bool fullscreen = false;
-    } m_settings;
-
+    // Mouse button tracker
     struct MouseButton {
         bool left = false;
         bool right = false;
         bool middle = false;
     } m_mouseButtons;
-
+    // Mouse scroll tracker
     struct Scroll {
         bool up = false;
         bool down = false;
     } m_scroll;
 
+    // Qt settings (likely not to be used)
+    struct Settings {
+        bool fullscreen = false;
+    } m_settings;
+
     std::string m_title = "Vulkan";
     std::vector<std::function<void()>> m_functions;
 
+    // Measures time between frames in seconds
     float m_frameTimer = 0.f;
 };
 
