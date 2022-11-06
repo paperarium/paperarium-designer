@@ -19,7 +19,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void showEvent(QShowEvent* event) override;
-    void closeEvent(QCloseEvent *event) override;
+    // void closeEvent(QCloseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
     std::unique_ptr<VulkanEngine::VulkanBaseEngine> m_vulkan;

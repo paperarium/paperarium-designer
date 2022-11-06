@@ -562,6 +562,7 @@ void VulkanBase::createFramebuffers() {
 VulkanBase::~VulkanBase() {
   VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
   vkDeviceWaitIdle(m_device);
+  destroySurface();
   VK_SAFE_DELETE(m_descriptorPool, vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr));
   VK_SAFE_DELETE(m_renderPass, vkDestroyRenderPass(m_device, m_renderPass, nullptr));
   for (auto &shaderModule : m_shaderModules)
@@ -571,7 +572,6 @@ VulkanBase::~VulkanBase() {
   VK_SAFE_DELETE(m_semaphores.renderComplete, vkDestroySemaphore(m_device, m_semaphores.renderComplete, nullptr));
   for (auto &fence: m_waitFences)
     VK_SAFE_DELETE(fence, vkDestroyFence(m_device, fence, nullptr));
-  destroySurface();
   VK_SAFE_DELETE(m_cmdPool, vkDestroyCommandPool(m_device, m_cmdPool, nullptr));
   delete_ptr(m_vulkanDevice);
   VK_SAFE_DELETE(m_instance, vkDestroyInstance(m_instance, nullptr));

@@ -21,10 +21,10 @@ MainWindow::MainWindow(QWidget *parent)
     setObjectName("main_window");
 
     // window attributes
-    setAttribute(Qt::WA_QuitOnClose);
+    // setAttribute(Qt::WA_QuitOnClose);
     setAttribute(Qt::WA_TranslucentBackground);
 
-    // initialize the qvulkanwindow
+    // initialize the inner vulkan instance
     vulkanWindow = new QVulkanWindow();
     QWidget* vulkanWidget = QWidget::createWindowContainer(vulkanWindow);
     vulkanWidget->setMouseTracking(true);

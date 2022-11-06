@@ -17,8 +17,8 @@
 
 #include "VulkanTools.h"
 #include "VulkanDevice.hpp"
-#include "VulkanSwapChain.hpp"
-#include "keycodes.hpp"
+#include "VulkanSwapChain.h"
+#include "keycodes.hpp" 
 
 namespace VulkanEngine {
 

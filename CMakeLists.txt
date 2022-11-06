@@ -149,6 +149,7 @@ set(PAPERARIUM_DESIGN_SRCS
     src/vulkan/template/VulkanBuffer.cpp
     src/vulkan/template/VulkanShader.cpp
     src/vulkan/utils/VulkanUIOverlay.cpp
+    src/vulkan/utils/VulkanSwapChain.cpp
     src/vulkan/utils/VulkanTools.cpp
     src/vulkan/utils/VulkanQtTools.cpp
     src/vulkan/VulkanBase.cpp
@@ -182,7 +183,7 @@ set(PAPERARIUM_DESIGN_HEADERS
     include/vulkanengine/utils/VulkanDebug.h
     include/vulkanengine/utils/VulkanDevice.hpp
     include/vulkanengine/utils/VulkanInitializers.hpp
-    include/vulkanengine/utils/VulkanSwapChain.hpp
+    include/vulkanengine/utils/VulkanSwapChain.h
     include/vulkanengine/utils/VulkanTools.h
     include/vulkanengine/utils/VulkanQtTools.h
     include/vulkanengine/utils/VulkanUIOverlay.h
@@ -269,7 +270,7 @@ target_link_libraries(
 
 # Define the target's properties
 set_target_properties(PaperariumDesign PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
+    MACOSX_BUNDLE_GUI_IDENTIFIER design.paperararium.place
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE

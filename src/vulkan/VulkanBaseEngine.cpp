@@ -219,6 +219,7 @@ void VulkanBaseEngine::drawUI(const VkCommandBuffer commandBuffer) {
  * Then deletes the pipeline layout from Vulkan.
  */
 VulkanBaseEngine::~VulkanBaseEngine() {
+  if (m_settings.overlay) m_UIOverlay.freeResources();
   delete_ptr(m_vulkanDescriptorSet);
   delete_ptr(m_vulkanVertexDescriptions);
   delete_ptr(m_pipelines);

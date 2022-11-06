@@ -6,7 +6,10 @@ QVulkanWindow::QVulkanWindow(QWidget* parent): QWindow() {
   m_vulkan->setWindow(winId());
 }
 
-QVulkanWindow::~QVulkanWindow() {}
+QVulkanWindow::~QVulkanWindow() {
+  m_vulkan->quit();
+  m_vulkan->renderJoin();
+}
 
 
 void QVulkanWindow::mousePressEvent(QMouseEvent *event) {
@@ -41,11 +44,6 @@ void QVulkanWindow::showEvent(QShowEvent *event) {
     m_vulkan->prepare();
     m_vulkan->renderAsyncThread();
   }
-}
-
-void QVulkanWindow::closeEvent(QCloseEvent *event) {
-  m_vulkan->quit();
-  m_vulkan->renderJoin();
 }
 
 void QVulkanWindow::resizeEvent(QResizeEvent *event) {

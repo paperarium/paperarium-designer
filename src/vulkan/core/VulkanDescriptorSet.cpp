@@ -110,6 +110,7 @@ void VulkanDescriptorSet::GenPipelineLayout(VkPipelineLayout *pipelineLayout) {
   // initialize a descriptor pool for all of our descriptor sets
   VkDescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(
     static_cast<uint32_t>(poolSizes.size()), poolSizes.data(), m_descriptorSets.size());
+  descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
   VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
   // determine a descriptor set layout based on the descriptor pool
   VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(
