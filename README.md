@@ -6,7 +6,7 @@
   <br>
 </h1>
 
-<h4 align="center">An open source desktop app for unfolding 3D models into <a href="https://paperarium.place" target="_blank">papercrafts</a>.</h4>
+<h4 align="center">An open source, cross-platform desktop app for unfolding 3D models into <a href="https://paperarium.place" target="_blank">papercrafts</a>.</h4>
 
 <p align="center">
   <a href="#key-features">Key Features</a> •
@@ -25,11 +25,11 @@
 * Open source and free to use
 * Cross platform
   - Windows, macOS and Linux ready.
-* OpenGL-based
+* Vulkan-backed rendering engine
 
 ## How To Develop
 
-To clone and run this application, you'll need [Git](https://git-scm.com) and [Qt Creator](https://www.qt.io/product/development-tools). Also make sure you have `pkg-config`, installable from Homebrew. From your command line:
+To be able to build this application from source, you'll need [Git](https://git-scm.com), [Qt](https://www.qt.io), [Qt Creator](https://www.qt.io/product/development-tools), and the [Vulkan SDK](https://vulkan.lunarg.com). Also make sure you have `pkg-config` for VCPKG, installable from Homebrew. Then, from your command line:
 
 ```bash
 # Clone this repository and the VCPKG submodule
@@ -38,9 +38,9 @@ $ git clone --recurse-submodules https://github.com/paperarium/paperarium-design
 # Go into the repository
 $ cd paperarium-designer
 
-# Set up VCPKG and install the ASSIMP dependency
+# Set up VCPKG and install the ASSIMP, GLM, OpenMP, and Vulkan dependencies
 $ ./lib/vcpkg/bootstrap-vcpkg.sh
-$ ./lib/vcpkg/vcpkg install assimp glm
+$ ./lib/vcpkg/vcpkg install assimp glm openmp vulkan
 ```
 
 > **Note**
@@ -52,10 +52,10 @@ This can be done by changing your Kit configuration in Qt Creator to add the `-D
 
 ```bash
 # Key, Value
-CMAKE_TOOLCHAIN_FILE, <path-to-your-clone>/paperarium-design/lib/vcpkg/scripts/buildsystems/vcpkg.cmake
+CMAKE_TOOLCHAIN_FILE, <path-to-your-clone>/lib/vcpkg/scripts/buildsystems/vcpkg.cmake
 ```
 
-This should enable you to now build and run Paperarium Designer. Happy developing!
+This should enable you to now build and run Paperarium Designer from with Qt Creator. I often do code work in VSCode as well, which necessitates installing the Qt Tools VSCode extension. Happy developing!
 
 ## Download
 
@@ -63,10 +63,10 @@ Paperarium does not yet have a release package, or even a beta version. Hopefull
 
 ## Credits
 
-The early code for this software would not have been possible without the fantastic work of [Daniel Triviño](https://github.com/dibu13) and [Rubén Sardón](https://github.com/cumus/) on their own [Qt 3D Model Viewer](https://github.com/cumus/QT-3D-Model-Viewer). Other packages / frameworks used:
+The early code for this software would not have been possible without the fantastic work of [Sascha Willems](https://github.com/SaschaWillems) and [engineer1109](https://github.com/engineer1109) in setting up their own basic cross-platform Vulkan applications. Other packages / frameworks used:
 
 - [Qt](https://www.qt.io)
-- [OpenGL](https://www.opengl.org)
+- [Vulkan](https://www.vulkan.org)
 
 ## Related
 
