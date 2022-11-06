@@ -4,24 +4,25 @@
 #include <QWindow>
 #include <QMouseEvent>
 #include "VulkanBaseEngine.h"
+#include "01_statictriangle/StaticTriangle.h"
 
 class QVulkanWindow : public QWindow {
 Q_OBJECT
 public:
     QVulkanWindow(QWidget* parent = Q_NULLPTR);
     virtual ~QVulkanWindow();
-    void setVulkanPtr(VulkanEngine::VulkanBaseEngine *vulkan);
-
-public slots:
-
-    void mousePressEvent(QMouseEvent* event);
-    void mouseReleaseEvent(QMouseEvent* event);
-    void mouseMoveEvent(QMouseEvent* event);
-    void showEvent(QShowEvent* event);
-    void closeEvent(QCloseEvent *event);
 
 protected:
-    VulkanEngine::VulkanBaseEngine *m_vulkan = nullptr;
+
+    // event listeners we will override
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+
+    std::unique_ptr<VulkanEngine::VulkanBaseEngine> m_vulkan;
     glm::vec2 *m_mousePos = nullptr;
 };
 

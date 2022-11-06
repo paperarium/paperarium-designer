@@ -83,6 +83,10 @@ public: // OPERATION METHODS
     // Sets the window id
     void setWindow(uint64_t winId) { m_winId = winId; }
 
+    // destination width and height
+    uint32_t m_destWidth = 1280;
+    uint32_t m_destHeight = 720;
+
 protected:
 
     // Window / surface id
@@ -92,8 +96,6 @@ protected:
     // Viewport dimensions
     uint32_t m_width = 1280;
     uint32_t m_height = 720;
-    uint32_t m_destWidth = 1280;
-    uint32_t m_destHeight = 720;
 
     // Vulkan instance states
     bool m_debug = true;

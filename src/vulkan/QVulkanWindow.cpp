@@ -2,17 +2,14 @@
 
 QVulkanWindow::QVulkanWindow(QWidget* parent): QWindow() {
   setSurfaceType(QSurface::VulkanSurface);
+  m_vulkan = std::make_unique<VulkanEngine::StaticTriangle>();
+  m_vulkan->setWindow(winId());
 }
 
 QVulkanWindow::~QVulkanWindow() {}
 
-void QVulkanWindow::setVulkanPtr(VulkanEngine::VulkanBaseEngine *vulkan) {
-  m_vulkan = vulkan;
-  m_vulkan->setWindow(winId());
-}
 
 void QVulkanWindow::mousePressEvent(QMouseEvent *event) {
-  if (!m_vulkan) return;
   if (event->button() & Qt::LeftButton) {
     m_vulkan->setMouseButtonLeft(true);
   } else if (event->button() & Qt::RightButton) {
@@ -24,7 +21,6 @@ void QVulkanWindow::mousePressEvent(QMouseEvent *event) {
 }
 
 void QVulkanWindow::mouseReleaseEvent(QMouseEvent *event) {
-  if (!m_vulkan) return;
   if (event->button() & Qt::LeftButton) {
     m_vulkan->setMouseButtonLeft(false);
   } else if (event->button() & Qt::RightButton) {
@@ -36,26 +32,24 @@ void QVulkanWindow::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 void QVulkanWindow::mouseMoveEvent(QMouseEvent *event) {
-  if (m_vulkan) {
-    m_vulkan->handleMouseMove(event->pos().x(), event->pos().y());
-  }
+  m_vulkan->handleMouseMove(event->pos().x(), event->pos().y());
 }
 
 void QVulkanWindow::showEvent(QShowEvent *event) {
-  if (m_vulkan && !m_vulkan->getPrepared()) {
-// #if defined(VK_USE_PLATFORM_XCB_KHR)
-//     m_vulkan->initxcbConnection();
-// #endif
+  if (!m_vulkan->getPrepared()) {
     m_vulkan->initVulkan();
-    // m_vulkan->setWindow(uint32_t(winId()));
     m_vulkan->prepare();
     m_vulkan->renderAsyncThread();
   }
 }
 
 void QVulkanWindow::closeEvent(QCloseEvent *event) {
-  if (m_vulkan) {
-    m_vulkan->quit();
-    m_vulkan->renderJoin();
-  }
+  m_vulkan->quit();
+  m_vulkan->renderJoin();
+}
+
+void QVulkanWindow::resizeEvent(QResizeEvent *event) {
+  m_vulkan->m_destWidth = width();
+  m_vulkan->m_destHeight = height();
+  QWindow::resizeEvent(event);
 }

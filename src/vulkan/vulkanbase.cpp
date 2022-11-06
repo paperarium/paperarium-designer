@@ -259,6 +259,7 @@ void VulkanBase::createLogicalDevice() {
  */
 void VulkanBase::prepare() {
   prepareBase();
+  m_prepared = true;
 }
 
 /**
@@ -589,7 +590,6 @@ VulkanBase::~VulkanBase() {
  */
 void VulkanBase::destroySurface() {
   if (!m_prepared) return;
-  LOGI("destroySurface");
   m_swapChain.cleanup();
   destroyCommandBuffers();
   VK_SAFE_DELETE(m_depthStencil.view, vkDestroyImageView(m_device, m_depthStencil.view, nullptr));
@@ -653,6 +653,11 @@ void VulkanBase::windowResize() {
   createCommandBuffers();
   buildCommandBuffers();
 
+  // recreate fences in case number of swapchain images has changed on resize
+  for (auto& fence : m_waitFences)
+    vkDestroyFence(m_device, fence, nullptr);
+  createSynchronizationPrimitives();
+
   vkDeviceWaitIdle(m_device);
   m_prepared = true;
 }
@@ -678,46 +683,6 @@ void VulkanBase::renderLoop() {
     m_scroll.up = false;
     m_scroll.down = false;
   }
-// #if defined(VK_USE_PLATFORM_XCB_KHR)
-//   xcb_flush(m_connection);
-//   while (!m_quit) {
-//     // read in messages––if quit message received, we need to quit
-//     xcb_generic_event_t *event;
-//     while ((event = xcb_poll_for_event(m_connection))) {
-//       handleEvent(event);
-//       free(event);
-//     }
-//     // otherwise, go ahead and render the frame
-//     renderFrame();
-//     updateOverlay();
-//     m_scroll.up = false;
-//     m_scroll.down = false;
-//   }
-// #elif defined(_WIN32)
-//   MSG msg;
-//   bool quitMessageReceived = false;
-//   while (!quitMessageReceived) {
-//     // read in messages––if quit message received, we need to quit
-//     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-//       TranslateMessage(&msg);
-//       DispatchMessage(&msg);
-//       if (msg.message == WM_QUIT) {
-//         quitMessageReceived = true;
-//         break;
-//       }
-//     }
-//     // when not minimized, continue rendering frames
-//     if (!IsIconic(m_window)) {
-//       renderFrame();
-//       updateOverlay();
-//     }
-//     m_scroll.up = false;
-//     m_scroll.down = false;
-//     if (m_quit) break;
-//   }
-// #elif (defined(VK_USE_PLATFORM_MACOS_MVK))
-//   [NSApp run];
-// #endif
   // once we have quit, just idle the Vulkan instance
   if (m_device != VK_NULL_HANDLE) {
     vkDeviceWaitIdle(m_device);
@@ -731,16 +696,15 @@ void VulkanBase::renderLoop() {
  * Measures frame render timing and stores frame times in m_frameTimer.
  */
 void VulkanBase::renderFrame() {
-  if (m_prepared && !m_pause) {
-    auto tStart = std::chrono::high_resolution_clock::now();
-    render(); // perform custom render logic
-    draw(); // perform base frame preparation and submission.
-    updateCommand(); // update command buffers
-    auto tEnd = std::chrono::high_resolution_clock::now();
-    auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
-    m_frameTimer = (float) tDiff / 1000.0f;
-    vkDeviceWaitIdle(m_device);
-  }
+  render();
+  prepareFrame();
+  m_submitInfo.commandBufferCount = 1;
+  m_submitInfo.pCommandBuffers = &m_drawCmdBuffers[m_currentBuffer];
+  VK_CHECK_RESULT(vkQueueSubmit(m_queue, 1, &m_submitInfo, VK_NULL_HANDLE));
+  submitFrame();
+  updateCommand();
+  // now wait for queue to become idle
+  VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
 }
 
 /* ----------------------------- IMPLEMENTATION ----------------------------- */
@@ -791,12 +755,12 @@ void VulkanBase::prepareFrame() {
   VkResult err = m_swapChain.acquireNextImage(m_semaphores.presentComplete, &m_currentBuffer);
   // recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
   if ((err == VK_ERROR_OUT_OF_DATE_KHR) || (err = VK_SUBOPTIMAL_KHR)) {
-    LOGI("VulkanEngine VK_ERROR_OUT_OF_DATE_KHR\n");
-    windowResize();
+    if (err == VK_ERROR_OUT_OF_DATE_KHR)
+        windowResize();
+    return;
   } else {
     VK_CHECK_RESULT(err);
   }
-  VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
 }
 
 /**
@@ -808,19 +772,15 @@ void VulkanBase::prepareFrame() {
  * the image is completed and ready to show.
  */
 void VulkanBase::submitFrame() {
-  if (m_pause) return;
-  VkResult res = m_swapChain.queuePresent(m_queue, m_currentBuffer, m_semaphores.renderComplete);
-  if (!((res == VK_SUCCESS) || (res == VK_SUBOPTIMAL_KHR))) {
-    if (res == VK_ERROR_OUT_OF_DATE_KHR) {
-      // swap chain is no longer compatible with the surface and needs to be recreated
-      LOGI("VulkanEngine VK_ERROR_OUT_OF_DATE_KHR\n");
-      windowResize();
-      return;
-    } else {
-      VK_CHECK_RESULT(res);
-    }
+  VkResult err = m_swapChain.queuePresent(m_queue, m_currentBuffer, m_semaphores.renderComplete);
+  // recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
+  if ((err == VK_ERROR_OUT_OF_DATE_KHR) || (err = VK_SUBOPTIMAL_KHR)) {
+    windowResize();
+    if (err == VK_ERROR_OUT_OF_DATE_KHR)
+        return;
+  } else {
+    VK_CHECK_RESULT(err);
   }
-  VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
 }
 
 /* -------------------------------------------------------------------------- */

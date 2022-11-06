@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <QWidget>
 #include "QVulkanWindow.h"
-#include "01_statictriangle/StaticTriangle.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
