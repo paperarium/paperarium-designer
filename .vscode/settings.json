@@ -6,6 +6,9 @@
     "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake",
     "USE_STD_EXPERIMENTAL_FILESYSTEM": true
   },
+  "cmake.debugConfig": {
+    "MIMode": "lldb",
+  },
   "files.associations": {
     "ios": "cpp",
     "memory": "cpp",

@@ -20,10 +20,10 @@ void VulkanPipelines::createBasePipelineInfo(const VkPipelineLayout &pipelineLay
   m_blendAttachmentState = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
   m_colorBlendState = vks::initializers::pipelineColorBlendStateCreateInfo(1, &m_blendAttachmentState);
   m_depthStencilState = vks::initializers::pipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
-  m_viewportState = vks::initializers::pipelineViewportStateCreateInfo(5, 5, 0);
+  m_viewportState = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
   m_multisampleState = vks::initializers::pipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
-  m_multisampleState.sampleShadingEnable = VK_TRUE;
-  m_multisampleState.minSampleShading = 0.2f;
+  m_multisampleState.sampleShadingEnable = VK_FALSE;
+  // m_multisampleState.minSampleShading = 0.2f;
   m_dynamicState = vks::initializers::pipelineDynamicStateCreateInfo(
     m_dynamicStateEnables.data(), static_cast<uint32_t>(m_dynamicStateEnables.size()), 0);
   m_pipelineCreateInfo = vks::initializers::pipelineCreateInfo(pipelineLayout, renderPass, 0);

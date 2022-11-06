@@ -731,7 +731,7 @@ void VulkanBase::renderLoop() {
  * Measures frame render timing and stores frame times in m_frameTimer.
  */
 void VulkanBase::renderFrame() {
-  if (m_prepared and !m_pause) {
+  if (m_prepared && !m_pause) {
     auto tStart = std::chrono::high_resolution_clock::now();
     render(); // perform custom render logic
     draw(); // perform base frame preparation and submission.
@@ -786,12 +786,12 @@ void VulkanBase::draw() {
  * to the surface.
  */
 void VulkanBase::prepareFrame() {
-  if (m_pause or !m_prepared) return;
+  if (m_pause || !m_prepared) return;
   // acquire the next image from the swap chain
   VkResult err = m_swapChain.acquireNextImage(m_semaphores.presentComplete, &m_currentBuffer);
   // recreate the swapchain if it's no longer compatible with the surface (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
   if ((err == VK_ERROR_OUT_OF_DATE_KHR) || (err = VK_SUBOPTIMAL_KHR)) {
-    LOGI("VulkanEngine VK_ERROR_OUT_OF_DATE_KHR");
+    LOGI("VulkanEngine VK_ERROR_OUT_OF_DATE_KHR\n");
     windowResize();
   } else {
     VK_CHECK_RESULT(err);
@@ -813,7 +813,7 @@ void VulkanBase::submitFrame() {
   if (!((res == VK_SUCCESS) || (res == VK_SUBOPTIMAL_KHR))) {
     if (res == VK_ERROR_OUT_OF_DATE_KHR) {
       // swap chain is no longer compatible with the surface and needs to be recreated
-      LOGI("VulkanEngine VK_ERROR_OUT_OF_DATE_KHR");
+      LOGI("VulkanEngine VK_ERROR_OUT_OF_DATE_KHR\n");
       windowResize();
       return;
     } else {
