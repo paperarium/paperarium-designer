@@ -12,7 +12,6 @@
 #define VULKANBASE_H
 
 #include "render_common.h"
-#include "filesystem_utils.h"
 #include "vulkan_macro.h"
 #include "base_template.h"
 

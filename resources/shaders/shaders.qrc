@@ -2,5 +2,7 @@
     <qresource prefix="/shaders">
         <file>base/uioverlay.frag.spv</file>
         <file>base/uioverlay.vert.spv</file>
+        <file>01_statictriangle/statictriangle.frag.spv</file>
+        <file>01_statictriangle/statictriangle.vert.spv</file>
     </qresource>
 </RCC>

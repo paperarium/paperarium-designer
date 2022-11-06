@@ -3,7 +3,8 @@
   "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 2, ColumnLimit: 0 }",
   "cmake.cmakePath": "/usr/local/bin/cmake",
   "cmake.configureSettings": {
-    "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake",
+    "USE_STD_EXPERIMENTAL_FILESYSTEM": true
   },
   "files.associations": {
     "ios": "cpp",

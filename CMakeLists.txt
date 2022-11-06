@@ -138,8 +138,15 @@ endif()
 
 # Locate different types of files
 set(PAPERARIUM_DESIGN_SRCS
+    src/example/01_statictriangle/StaticTriangle.cpp
+    src/example/01_statictriangle/objects/Triangle.cpp
+    src/example/01_statictriangle/objects/TriangleShader.cpp
+    src/example/01_statictriangle/objects/TriangleUniform.cpp
     src/vulkan/core/VulkanDescriptorSet.cpp
     src/vulkan/core/VulkanPipelines.cpp
+    src/vulkan/template/camera/UniformCamera.cpp
+    src/vulkan/template/mesh/MeshObject.cpp
+    src/vulkan/template/VulkanBuffer.cpp
     src/vulkan/template/VulkanShader.cpp
     src/vulkan/utils/VulkanUIOverlay.cpp
     src/vulkan/utils/VulkanTools.cpp
@@ -149,9 +156,13 @@ set(PAPERARIUM_DESIGN_SRCS
     src/vulkan/QVulkanWindow.cpp
     src/mainwindow.cpp
 )
+
 set(PAPERARIUM_DESIGN_HEADERS
+    include/example/01_statictriangle/StaticTriangle.h
+    include/example/01_statictriangle/objects/Triangle.h
+    include/example/01_statictriangle/objects/TriangleShader.h
+    include/example/01_statictriangle/objects/TriangleUniform.h
     include/vulkanengine/common/base_template.h
-    include/vulkanengine/common/filesystem_utils.h
     include/vulkanengine/common/render_common.h
     include/vulkanengine/common/vertex_struct.h
     include/vulkanengine/common/vulkan_macro.h
@@ -159,7 +170,11 @@ set(PAPERARIUM_DESIGN_HEADERS
     include/vulkanengine/core/VulkanDescriptorSet.h
     include/vulkanengine/core/VulkanPipelines.h
     include/vulkanengine/core/VulkanVertexDescriptions.h
+    include/vulkanengine/template/camera/UniformCamera.h
+    include/vulkanengine/template/camera/ThirdPersonCamera.h
+    include/vulkanengine/template/mesh/MeshObject.h
     include/vulkanengine/template/VkObject.h
+    include/vulkanengine/template/VulkanBuffer.h
     include/vulkanengine/template/VulkanShader.h
     include/vulkanengine/utils/keycodes.hpp
     include/vulkanengine/utils/VulkanAndroid.h
@@ -222,6 +237,7 @@ target_include_directories(
     PaperariumDesign
     PRIVATE
     include
+    include/example
     include/vulkanengine
     include/vulkanengine/common
     include/vulkanengine/core

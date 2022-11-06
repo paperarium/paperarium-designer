@@ -28,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     vulkanWindow = new QVulkanWindow();
     QWidget* vulkanWidget = QWidget::createWindowContainer(vulkanWindow);
     vulkanWidget->setMouseTracking(true);
-    VulkanEngine::VulkanBaseEngine* engine = new VulkanEngine::VulkanBaseEngine();
+    VulkanEngine::StaticTriangle* engine = new VulkanEngine::StaticTriangle();
     vulkanWindow->setVulkanPtr(engine);
     ui->horizontalLayout->addWidget(vulkanWidget);
     vulkanWidget->show();

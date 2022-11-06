@@ -127,8 +127,8 @@ void VulkanDescriptorSet::GenPipelineLayout(VkPipelineLayout *pipelineLayout) {
     VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(m_descriptorPool, &m_descriptorSetLayout, 1);
     VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &m_descriptorSets[i]));
     // save the locations of the descriptor sets for later use
-    for (size_t j = 0; j < writeDescriptorSets[i].size(); i++)
-      writeDescriptorSets[i][j].dstSet = m_descriptorSets[j];
+    for (size_t j = 0; j < writeDescriptorSets[i].size(); j++)
+      writeDescriptorSets[i][j].dstSet = m_descriptorSets[i];
     vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets[i].size()), writeDescriptorSets[i].data(), 0, NULL);
   }
 }

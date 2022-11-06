@@ -3,7 +3,6 @@
 
 #include "vulkan_macro.h"
 #include "base_template.h"
-#include "filesystem_utils.h"
 #include "VulkanDevice.hpp"
 #include "VulkanContext.h"
 

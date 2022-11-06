@@ -1,25 +1,46 @@
 {
-  "configurations": [
-    {
-      "name": "Mac",
-      "includePath": [
-        "${workspaceFolder}/include/*",
-        "${vcpkgRoot}/x64-osx/include",
-        "${env:VULKAN_SDK}/include"
-      ],
-      "browse": {
-        "path": []
+    "configurations": [
+      {
+        "name": "iMac",
+        "includePath": [
+          "${workspaceFolder}/include/*",
+          "${vcpkgRoot}/x64-osx/include",
+          "${env:VULKAN_SDK}/include"
+        ],
+        "browse": {
+          "path": []
+        },
+        "defines": [],
+        "macFrameworkPath": [
+          "/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/System/Library/Frameworks"
+        ],
+        "compilerPath": "/usr/bin/clang",
+        "cStandard": "c17",
+        "cppStandard": "c++17",
+        "intelliSenseMode": "macos-clang-x64",
+        "configurationProvider": "ms-vscode.cmake-tools"
       },
-      "defines": [],
-      "macFrameworkPath": [
-        "/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/System/Library/Frameworks"
-      ],
-      "compilerPath": "/usr/bin/clang",
-      "cStandard": "c17",
-      "cppStandard": "c++17",
-      "intelliSenseMode": "macos-clang-x64",
-      "configurationProvider": "ms-vscode.cmake-tools"
-    }
-  ],
-  "version": 4
-}
+      {
+        "name": "Macbook",
+        "includePath": [
+          "${workspaceFolder}/include/*",
+          "${workspaceFolder}/lib/vcpkg/installed/x64-osx/include",
+          "${env:VULKAN_SDK}/include"
+        ],
+        "browse": {
+          "path": []
+        },
+        "defines": [],
+        "macFrameworkPath": [
+          "/Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk/System/Library/Frameworks"
+        ],
+        "compilerPath": "/usr/bin/clang",
+        "cStandard": "c17",
+        "cppStandard": "c++17",
+        "intelliSenseMode": "macos-clang-x64",
+        "configurationProvider": "ms-vscode.cmake-tools",
+      }
+    ],
+    "version": 4
+  }
+  

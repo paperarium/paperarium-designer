@@ -29,7 +29,7 @@
 
 ## How To Develop
 
-To clone and run this application, you'll need [Git](https://git-scm.com) and [Qt Creator](https://www.qt.io/product/development-tools). From your command line:
+To clone and run this application, you'll need [Git](https://git-scm.com) and [Qt Creator](https://www.qt.io/product/development-tools). Also make sure you have `pkg-config`, installable from Homebrew. From your command line:
 
 ```bash
 # Clone this repository and the VCPKG submodule
@@ -40,7 +40,7 @@ $ cd paperarium-designer
 
 # Set up VCPKG and install the ASSIMP dependency
 $ ./lib/vcpkg/bootstrap-vcpkg.sh
-$ ./lib/vcpkg/vcpkg install assimp
+$ ./lib/vcpkg/vcpkg install assimp glm
 ```
 
 > **Note**
