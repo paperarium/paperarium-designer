@@ -3,6 +3,7 @@
 
 #include "VulkanBaseEngine.h"
 #include <QMouseEvent>
+#include <QWheelEvent>
 #include <QWindow>
 
 class QVulkanWindow : public QWindow {
@@ -16,6 +17,7 @@ class QVulkanWindow : public QWindow {
   void mousePressEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
+  void wheelEvent(QWheelEvent* event) override;
   void showEvent(QShowEvent* event) override;
   // void closeEvent(QCloseEvent *event) override;
   void resizeEvent(QResizeEvent* event) override;

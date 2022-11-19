@@ -38,6 +38,13 @@ void QVulkanWindow::mouseMoveEvent(QMouseEvent* event) {
   m_vulkan->handleMouseMove(event->pos().x(), event->pos().y());
 }
 
+void QVulkanWindow::wheelEvent(QWheelEvent* event) {
+  QPoint angleDelta = event->angleDelta();
+  if (!angleDelta.isNull()) {
+    m_vulkan->setMouseWheelScroll(static_cast<float>(angleDelta.y()));
+  }
+}
+
 void QVulkanWindow::showEvent(QShowEvent* event) {
   if (!m_vulkan->getPrepared()) {
     m_vulkan->initVulkan();

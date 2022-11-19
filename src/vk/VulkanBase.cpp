@@ -741,8 +741,7 @@ void VulkanBase::renderLoop() {
   while (!m_quit) {
     renderFrame();
     updateOverlay();
-    m_scroll.up = false;
-    m_scroll.down = false;
+    m_scroll = 0.f;
   }
   // once we have quit, just idle the Vulkan instance
   if (m_device != VK_NULL_HANDLE) {

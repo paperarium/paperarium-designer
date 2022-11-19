@@ -1,4 +1,5 @@
 #include "ThirdPersonEngine.h"
+#include <QtDebug>
 
 namespace VulkanEngine {
 
@@ -7,21 +8,12 @@ namespace VulkanEngine {
  */
 void ThirdPersonEngine::updateCamera() {
   if (m_mouseButtons.left) {
-    if (m_mousePos.x > m_mousePosOld.x) {
-      m_camera.m_rotation.y += 1.f;
-    } else if (m_mousePos.x < m_mousePosOld.y) {
-      m_camera.m_rotation.y -= 1.f;
-    }
-    if (m_mousePos.y > m_mousePosOld.y) {
-      m_camera.m_rotation.x += 1.f;
-    } else if (m_mousePos.y < m_mousePosOld.y) {
-      m_camera.m_rotation.x -= 1.f;
-    }
+    m_camera.m_rotation.y +=
+        (m_mousePos.x - m_mousePosOld.x) / m_viewportSensitivity;
+    m_camera.m_rotation.x +=
+        (m_mousePos.y - m_mousePosOld.y) / m_viewportSensitivity;
   }
-  if (m_scroll.up)
-    m_distance += 0.1f;
-  else if (m_scroll.down)
-    m_distance -= 0.1f;
+  m_distance += m_scroll / m_scrollSensitivity;
   m_camera.m_zoom += m_distance;
   m_distance = 0.f;
   m_mousePosOld = m_mousePos;

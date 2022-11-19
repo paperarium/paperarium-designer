@@ -78,6 +78,7 @@ class VulkanBase {
   void setMouseButtonLeft(bool value) { m_mouseButtons.left = value; }
   void setMouseButtonRight(bool value) { m_mouseButtons.right = value; }
   void setMouseButtonMiddle(bool value) { m_mouseButtons.middle = value; }
+  void setMouseWheelScroll(float scroll) { m_scroll = scroll; }
 
   // Sets the window id
   void setWindow(uint64_t winId) { m_winId = winId; }
@@ -169,10 +170,7 @@ class VulkanBase {
     bool middle = false;
   } m_mouseButtons;
   // Mouse scroll tracker
-  struct Scroll {
-    bool up = false;
-    bool down = false;
-  } m_scroll;
+  float m_scroll = 0.f;
 
   // Qt settings (likely not to be used)
   struct Settings {
