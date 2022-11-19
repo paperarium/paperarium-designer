@@ -7,12 +7,8 @@ VulkanBuffer::~VulkanBuffer() {
   m_uniformBuffer.destroy();
 }
 
-void VulkanBuffer::prepare() {
-  prepareUniformBuffers();
-}
+void VulkanBuffer::prepare() { prepareUniformBuffers(); }
 
-void VulkanBuffer::update() {
-  updateUniformBuffers();
-}
+void VulkanBuffer::update() { updateUniformBuffers(); }
 
-}
+}  // namespace VulkanEngine

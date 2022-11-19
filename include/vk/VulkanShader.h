@@ -6,7 +6,7 @@
 namespace VulkanEngine {
 
 class VULKANENGINE_EXPORT_API VulkanShader : public VkObject {
-public:
+ public:
   VulkanShader() = default;
   virtual ~VulkanShader();
 
@@ -16,29 +16,35 @@ public:
   virtual void prepareShaders() = 0;
 
   // getters
-  VkPipeline &getPipeline() { return m_pipeline; }
-  std::vector<VkPipelineShaderStageCreateInfo> &getShaderStages() { return m_shaderStages; }
+  VkPipeline& getPipeline() { return m_pipeline; }
+  std::vector<VkPipelineShaderStageCreateInfo>& getShaderStages() {
+    return m_shaderStages;
+  }
   bool getDepthBiasEnabled() const { return m_depthBiasEnable; }
   bool isOneStage() const { return m_oneStage; }
   bool isInstanceShader() const { return m_instanceShader; }
   VkCullModeFlags getCullFlag() const { return m_cullFlag; }
   VkFrontFace getFrontFace() const { return m_frontFace; }
-  VkPipelineVertexInputStateCreateInfo getVertexInputState() const { return m_inputState; }
+  VkPipelineVertexInputStateCreateInfo getVertexInputState() const {
+    return m_inputState;
+  }
 
   // setters
   void setCullFlag(VkCullModeFlags flag) { m_cullFlag = flag; }
   void setFrontFace(VkFrontFace face) { m_frontFace = face; }
   void setDepthBiasEnable(bool value) { m_depthBiasEnable = value; }
   void setOneStage(bool value) { m_oneStage = value; }
-  void setVertexInputState(const VkPipelineVertexInputStateCreateInfo &inputStateCreateInfo) {
+  void setVertexInputState(
+      VkPipelineVertexInputStateCreateInfo const& inputStateCreateInfo) {
     m_inputState = inputStateCreateInfo;
     m_instanceShader = true;
   }
 
-protected:
-  VkPipelineShaderStageCreateInfo loadShader(const std::string &fileName, const VkShaderStageFlagBits &stage);
+ protected:
+  VkPipelineShaderStageCreateInfo loadShader(
+      std::string const& fileName, VkShaderStageFlagBits const& stage);
 
-protected:
+ protected:
   VkPipeline m_pipeline = VK_NULL_HANDLE;
   std::vector<VkPipelineShaderStageCreateInfo> m_shaderStages;
   std::vector<VkShaderModule> m_shaderModules;
@@ -51,6 +57,6 @@ protected:
   bool m_oneStage = false;
 };
 
-}
+}  // namespace VulkanEngine
 
 #endif /* VULKAN_SHADER_H */

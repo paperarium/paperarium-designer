@@ -2,14 +2,13 @@
 #define VULKAN_BUFFER_H
 
 #include "VkObject.h"
-#include "VulkanContext.h"
 #include "VulkanBuffer.h"
+#include "VulkanContext.h"
 
 namespace VulkanEngine {
 
-class VULKANENGINE_EXPORT_API VulkanBuffer: public VkObject {
-public:
-
+class VULKANENGINE_EXPORT_API VulkanBuffer : public VkObject {
+ public:
   VulkanBuffer() = default;
   virtual ~VulkanBuffer();
 
@@ -18,11 +17,10 @@ public:
   virtual void prepareUniformBuffers() = 0;
   virtual void updateUniformBuffers() = 0;
 
-public:
+ public:
   vks::Buffer m_uniformBuffer;
-
 };
 
-}
+}  // namespace VulkanEngine
 
 #endif /* VULKAN_BUFFER_H */
