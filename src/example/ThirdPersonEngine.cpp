@@ -16,6 +16,7 @@ void ThirdPersonEngine::updateCamera() {
   m_distance += m_scroll / m_scrollSensitivity;
   m_camera.m_zoom += m_distance;
   m_distance = 0.f;
+  m_scroll = 0.f;
   m_mousePosOld = m_mousePos;
 }
 

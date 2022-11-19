@@ -9,7 +9,7 @@ namespace VulkanEngine {
 class VULKANENGINE_EXPORT_API VulkanPlane : public MeshObject {
  public:
   VulkanPlane() = default;
-  ~VulkanPlane();
+  ~VulkanPlane() noexcept;
 
   void generateVertex() override;
   void updateVertex() override{};

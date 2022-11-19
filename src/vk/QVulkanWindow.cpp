@@ -40,7 +40,7 @@ void QVulkanWindow::mouseMoveEvent(QMouseEvent* event) {
 
 void QVulkanWindow::wheelEvent(QWheelEvent* event) {
   QPoint angleDelta = event->angleDelta();
-  if (!angleDelta.isNull()) {
+  if (!angleDelta.isNull() && abs(angleDelta.y()) > 5) {
     m_vulkan->setMouseWheelScroll(static_cast<float>(angleDelta.y()));
   }
 }

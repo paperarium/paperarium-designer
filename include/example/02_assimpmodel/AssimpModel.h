@@ -16,7 +16,7 @@ namespace VulkanEngine {
 class AssimpModel : public ThirdPersonEngine {
  public:
   AssimpModel() = default;
-  ~AssimpModel();
+  ~AssimpModel() noexcept;
 
   void prepareFunctions() override;
   void prepareMyObjects() override;
@@ -29,7 +29,7 @@ class AssimpModel : public ThirdPersonEngine {
   void createDebugQuad();
   void buildCommandBuffersBeforeMainRenderPass(VkCommandBuffer& cmd) override;
   void seeDebugQuad();
-  void OnUpdateUIOverlay(vks::UIOverlay* overlay){};
+  void OnUpdateUIOverlay(vks::UIOverlay* overlay) override{};
 
  protected:
   std::shared_ptr<AssimpObject> m_assimpObject = nullptr;

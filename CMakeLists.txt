@@ -263,12 +263,6 @@ endif()
 # Locate all the required packages
 find_package(ASSIMP REQUIRED)                       # ASSIMP
 find_package(GLM REQUIRED)                          # GLM
-find_package(OpenMP REQUIRED)                       # OpenMP
-if (OPENMP_FOUND)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-endif()
 
 # local includes are all in the include/ folder
 target_include_directories(
@@ -283,7 +277,6 @@ target_include_directories(
     ${Vulkan_INCLUDE_DIRS}
     ${ASSIMP_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
-    ${OPENMP_INCLUDE_DIRS}
     ${IMGUI_INCLUDE_DIRS}
     ${ADDITIONAL_INCLUDE_DIRS}
     ${STB_INCLUDE_DIRS})
@@ -300,7 +293,6 @@ target_link_libraries(
     ${ASSIMP_LIBRARIES}
     ${Vulkan_LIBRARIES}
     ${GLM_LIBRARIES}
-    ${OPENMP_LIBRARIES}
     ${ADDITIONAL_LIBRARIES})
 
 # ---------------------------- BUNDLE BUILD + INSTALL ----------------------- #
