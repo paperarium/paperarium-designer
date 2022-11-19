@@ -287,6 +287,30 @@ void VulkanBaseEngine::updateOverlay() {
   io.MouseDown[0] = m_mouseButtons.left;
   io.MouseDown[1] = m_mouseButtons.right;
 
+  ImGui::NewFrame();
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+  ImGui::SetNextWindowPos(ImVec2(10, 10));
+  ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+  ImGui::Begin("Paperarium Designer", nullptr,
+               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize |
+                   ImGuiWindowFlags_NoMove);
+  ImGui::TextUnformatted(m_title.c_str());
+  ImGui::TextUnformatted(m_deviceProperties.deviceName);
+  ImGui::Text("%.2f ms/frame (%.1d fps)", m_frameTimer * 1000,
+              int(1.f / m_frameTimer));
+  ImGui::PushItemWidth(110.0f * m_UIOverlay.scale);
+  OnUpdateUIOverlay(&m_UIOverlay);
+  ImGui::PopItemWidth();
+
+  ImGui::End();
+  ImGui::PopStyleVar();
+  ImGui::Render();
+
+  if (m_UIOverlay.update() || m_UIOverlay.updated) {
+    buildCommandBuffers();
+    m_UIOverlay.updated = false;
+  }
+
   // build our ImGui overlay here
   // ImGui::NewFrame();
   // DO STUFF FOR IMGUI

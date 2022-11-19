@@ -757,6 +757,7 @@ void VulkanBase::renderLoop() {
  * m_frameTimer.
  */
 void VulkanBase::renderFrame() {
+  auto tStart = std::chrono::high_resolution_clock::now();
   render();
   prepareFrame();
   m_submitInfo.commandBufferCount = 1;
@@ -764,6 +765,9 @@ void VulkanBase::renderFrame() {
   VK_CHECK_RESULT(vkQueueSubmit(m_queue, 1, &m_submitInfo, VK_NULL_HANDLE));
   submitFrame();
   updateCommand();
+  auto tEnd = std::chrono::high_resolution_clock::now();
+  auto tDiff = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+  m_frameTimer = (float)tDiff / 1000.0f;
   // now wait for queue to become idle
   VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
 }
