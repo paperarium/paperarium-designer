@@ -72,3 +72,7 @@ Thumbs.db
 *.exe
 
 build/
+
+# Qt caching stuff
+CMakeLists.txt.user
+CMakeLists.txt.user.*
