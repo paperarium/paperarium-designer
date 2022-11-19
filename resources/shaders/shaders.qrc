@@ -4,5 +4,11 @@
         <file>base/uioverlay.vert.spv</file>
         <file>01_statictriangle/statictriangle.frag.spv</file>
         <file>01_statictriangle/statictriangle.vert.spv</file>
+        <file>02_assimpmodel/quad.frag.spv</file>
+        <file>02_assimpmodel/quad.vert.spv</file>
+        <file>02_assimpmodel/scene.frag.spv</file>
+        <file>02_assimpmodel/scene.vert.spv</file>
+        <file>02_assimpmodel/shadow.frag.spv</file>
+        <file>02_assimpmodel/shadow.vert.spv</file>
     </qresource>
 </RCC>

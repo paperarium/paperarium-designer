@@ -7,7 +7,7 @@
     "USE_STD_EXPERIMENTAL_FILESYSTEM": true
   },
   "cmake.debugConfig": {
-    "MIMode": "lldb",
+    "MIMode": "lldb"
   },
   "files.associations": {
     "ios": "cpp",
@@ -116,5 +116,6 @@
       "${commentend}"
     ]
   },
-  "editor.formatOnSave": false
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "xaver.clang-format"
 }

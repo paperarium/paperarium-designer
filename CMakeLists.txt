@@ -3,6 +3,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(PaperariumDesign VERSION 0.1 LANGUAGES CXX)
 
+# Add resource subdirectories
+
 # Set CMake variables
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Turn on Qt-related auto compiler options
@@ -14,6 +16,7 @@ set(AUTOMOC_PATH_PREFIX ON)
 
 # Add some definitions
 add_definitions(-DSTBI_NO_DDS)
+add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 add_definitions(-DUSE_STD_FILESYSTEM)  # For Old Compilers as GCC 7 change to -DUSE_STD_EXPERIMENTAL_FILESYSTEM
 add_definitions(-D_USE_MATH_DEFINES)
 add_definitions(-DPROJECT_ABSOLUTE_PATH="${PROJECT_SOURCE_DIR}")
@@ -24,7 +27,12 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Gui
 # Include ImGui for GUIs in Vulkan
 find_package(imgui REQUIRED)
 # Include Vulkan so we can determine how to bundle
-find_package(Vulkan COMPONENTS glslc REQUIRED)
+find_package(Vulkan REQUIRED COMPONENTS glslc)
+# Grab the STB image aug header
+find_path(STB_INCLUDE_DIRS "stb_image.h")
+
+# Add the resources directory for compiling shaders
+add_subdirectory(resources)
 
 # ------------------------ ADD COMPILER DEFINITIONS -------------------------- #
 
@@ -136,71 +144,100 @@ endif()
 
 # --------------------------------- SOURCES --------------------------------- #
 
-# Locate different types of files
-set(PAPERARIUM_DESIGN_SRCS
-    src/example/01_statictriangle/StaticTriangle.cpp
-    src/example/01_statictriangle/objects/Triangle.cpp
-    src/example/01_statictriangle/objects/TriangleShader.cpp
-    src/example/01_statictriangle/objects/TriangleUniform.cpp
-    src/vulkan/core/VulkanDescriptorSet.cpp
-    src/vulkan/core/VulkanPipelines.cpp
-    src/vulkan/template/camera/UniformCamera.cpp
-    src/vulkan/template/mesh/MeshObject.cpp
-    src/vulkan/template/VulkanBuffer.cpp
-    src/vulkan/template/VulkanShader.cpp
-    src/vulkan/utils/VulkanUIOverlay.cpp
-    src/vulkan/utils/VulkanSwapChain.cpp
-    src/vulkan/utils/VulkanTools.cpp
-    src/vulkan/utils/VulkanQtTools.cpp
-    src/vulkan/VulkanBase.cpp
-    src/vulkan/VulkanBaseEngine.cpp
-    src/vulkan/QVulkanWindow.cpp
-    src/mainwindow.cpp
-)
-
+# header files
 set(PAPERARIUM_DESIGN_HEADERS
     include/example/01_statictriangle/StaticTriangle.h
     include/example/01_statictriangle/objects/Triangle.h
     include/example/01_statictriangle/objects/TriangleShader.h
     include/example/01_statictriangle/objects/TriangleUniform.h
-    include/vulkanengine/common/base_template.h
-    include/vulkanengine/common/render_common.h
-    include/vulkanengine/common/vertex_struct.h
-    include/vulkanengine/common/vulkan_macro.h
-    include/vulkanengine/core/VulkanContext.h
-    include/vulkanengine/core/VulkanDescriptorSet.h
-    include/vulkanengine/core/VulkanPipelines.h
-    include/vulkanengine/core/VulkanVertexDescriptions.h
-    include/vulkanengine/template/camera/UniformCamera.h
-    include/vulkanengine/template/camera/ThirdPersonCamera.h
-    include/vulkanengine/template/mesh/MeshObject.h
-    include/vulkanengine/template/VkObject.h
-    include/vulkanengine/template/VulkanBuffer.h
-    include/vulkanengine/template/VulkanShader.h
-    include/vulkanengine/utils/keycodes.hpp
-    include/vulkanengine/utils/VulkanAndroid.h
-    include/vulkanengine/utils/VulkanBuffer.hpp
-    include/vulkanengine/utils/VulkanDebug.h
-    include/vulkanengine/utils/VulkanDevice.hpp
-    include/vulkanengine/utils/VulkanInitializers.hpp
-    include/vulkanengine/utils/VulkanSwapChain.h
-    include/vulkanengine/utils/VulkanTools.h
-    include/vulkanengine/utils/VulkanQtTools.h
-    include/vulkanengine/utils/VulkanUIOverlay.h
-    include/vulkanengine/VulkanBase.h
-    include/vulkanengine/VulkanBaseEngine.h
-    include/vulkanengine/QVulkanWindow.h
+    include/example/02_assimpmodel/AssimpModel.h
+    include/example/ThirdPersonEngine.h
+    include/vk/common/base_template.h
+    include/vk/common/render_common.h
+    include/vk/common/vertex_struct.h
+    include/vk/common/vulkan_macro.h
+    include/vk/template/camera/ShadowCamera.h
+    include/vk/template/camera/ThirdPersonCamera.h
+    include/vk/template/camera/UniformCamera.h
+    include/vk/template/mesh/AssimpObject.h
+    include/vk/template/mesh/MeshObject.h
+    include/vk/template/mesh/VulkanCube.h
+    include/vk/template/mesh/VulkanPlane.h
+    include/vk/template/texture/VulkanTexture.h
+    include/vk/template/texture/VulkanTexture2D.h
+    include/vk/utils/keycodes.hpp
+    include/vk/utils/VulkanAndroid.h
+    include/vk/utils/VulkanBuffer.hpp
+    include/vk/utils/VulkanDebug.h
+    include/vk/utils/VulkanDevice.hpp
+    include/vk/utils/VulkanInitializers.hpp
+    include/vk/utils/VulkanSwapChain.h
+    include/vk/utils/VulkanTools.h
+    include/vk/utils/VulkanQtTools.h
+    include/vk/utils/VulkanUIOverlay.h
+    include/vk/QVulkanWindow.h
+    include/vk/VkObject.h
+    include/vk/VulkanBase.h
+    include/vk/VulkanBaseEngine.h
+    include/vk/VulkanBuffer.h
+    include/vk/VulkanContext.h
+    include/vk/VulkanDescriptorSet.h
+    include/vk/VulkanFrameBuffer.h
+    include/vk/VulkanPipelines.h
+    include/vk/VulkanRenderPass.h
+    include/vk/VulkanShader.h
+    include/vk/VulkanVertexDescriptions.h
     include/mainwindow.h
+    ${STB_INCLUDE_DIRS}
 )
+
+# source files
+set(PAPERARIUM_DESIGN_SRCS
+    src/example/01_statictriangle/StaticTriangle.cpp
+    src/example/01_statictriangle/objects/Triangle.cpp
+    src/example/01_statictriangle/objects/TriangleShader.cpp
+    src/example/01_statictriangle/objects/TriangleUniform.cpp
+    src/example/02_assimpmodel/AssimpModel.cpp
+    src/example/ThirdPersonEngine.cpp
+    src/vk/template/camera/ShadowCamera.cpp
+    src/vk/template/camera/UniformCamera.cpp
+    src/vk/template/mesh/AssimpObject.cpp
+    src/vk/template/mesh/MeshObject.cpp
+    src/vk/template/mesh/VulkanCube.cpp
+    src/vk/template/mesh/VulkanPlane.cpp
+    src/vk/template/texture/VulkanTexture2D.cpp
+    src/vk/QVulkanWindow.cpp
+    src/vk/VulkanBase.cpp
+    src/vk/VulkanBaseEngine.cpp
+    src/vk/VulkanBuffer.cpp
+    src/vk/VulkanDescriptorSet.cpp
+    src/vk/VulkanFrameBuffer.cpp
+    src/vk/VulkanPipelines.cpp
+    src/vk/VulkanQtTools.cpp
+    src/vk/VulkanRenderPass.cpp
+    src/vk/VulkanShader.cpp
+    src/vk/VulkanSwapChain.cpp
+    src/vk/VulkanTools.cpp
+    src/vk/VulkanUIOverlay.cpp
+    src/mainwindow.cpp
+)
+
+# Qt UI files
 set(PAPERARIUM_DESIGN_UIS
     ui/mainwindow.ui
 )
+
+# localization files
 set(PAPERARIUM_DESIGN_TSS
     lang/PaperariumDesign_en_US.ts
 )
+
+# resource files
 set(PAPERARIUM_DESIGN_RESOURCES
     resources/shaders/shaders.qrc
     resources/fonts/fonts.qrc)
+
+
 # Concatenate all into project sources
 set(PAPERARIUM_DESIGN_ALL_SOURCES
     main.cpp
@@ -239,17 +276,17 @@ target_include_directories(
     PRIVATE
     include
     include/example
-    include/vulkanengine
-    include/vulkanengine/common
-    include/vulkanengine/core
-    include/vulkanengine/template
-    include/vulkanengine/utils
+    include/vk
+    include/vk/common
+    include/vk/template
+    include/vk/utils
     ${Vulkan_INCLUDE_DIRS}
     ${ASSIMP_INCLUDE_DIRS}
     ${GLM_INCLUDE_DIRS}
     ${OPENMP_INCLUDE_DIRS}
     ${IMGUI_INCLUDE_DIRS}
-    ${ADDITIONAL_INCLUDE_DIRS})
+    ${ADDITIONAL_INCLUDE_DIRS}
+    ${STB_INCLUDE_DIRS})
 
 # ----------------------------- LINK LIBRARIES ------------------------------ #
 
