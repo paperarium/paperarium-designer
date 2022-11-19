@@ -18,7 +18,9 @@
 </p>
 
 > **Note**
-> This is a work in progress.
+> This is a work in progress. Below is a screenshot of the latest state of development.
+
+<img width="1440" alt="Screenshot 2022-11-19 at 3 53 15 AM" src="https://user-images.githubusercontent.com/30581915/202843195-2e1e8fb3-8a35-4ba5-af18-0a576bee6746.png">
 
 ## Key Features
 
