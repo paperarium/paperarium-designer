@@ -10,5 +10,7 @@
         <file>02_assimpmodel/scene.vert.spv</file>
         <file>02_assimpmodel/shadow.frag.spv</file>
         <file>02_assimpmodel/shadow.vert.spv</file>
+        <file>02_assimpmodel/line.frag.spv</file>
+        <file>02_assimpmodel/line.vert.spv</file>
     </qresource>
 </RCC>

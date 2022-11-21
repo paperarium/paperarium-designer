@@ -133,7 +133,7 @@ void VulkanBaseEngine::buildCommandBuffers() {
     buildCommandBuffersBeforeMainRenderPass(m_drawCmdBuffers[i]);
     {
       VkClearValue clearValues[2];
-      clearValues[0].color = {{0.1f, 0.2f, 0.3f, 1.0f}};
+      clearValues[0].color = {{0.f, 0.f, 0.f, 0.0f}};
       clearValues[1].depthStencil = {1.0f, 0};
       // set target frame buffer
       VkRenderPassBeginInfo renderPassBeginInfo =

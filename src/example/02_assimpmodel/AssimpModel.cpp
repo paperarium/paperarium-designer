@@ -19,6 +19,7 @@ void AssimpModel::prepareMyObjects() {
 
 void AssimpModel::buildMyObjects(VkCommandBuffer& cmd) {
   m_assimpObject->build(cmd, m_cubeShader);
+  m_assimpObject->build(cmd, m_lineShader);
   if (m_seeDebug) {
     m_debugPlane->build(cmd, m_debugShader);
   }
@@ -52,6 +53,7 @@ void AssimpModel::setDescriptorSet() {
 void AssimpModel::createPipelines() {
   m_pipelines->createBasePipelineInfo(m_pipelineLayout, m_renderPass);
   m_pipelines->createPipeline(m_cubeShader);
+  m_pipelines->createPipeline(m_lineShader, VK_POLYGON_MODE_LINE);
   m_pipelines->createPipeline(m_debugShader);
   m_pipelines->createPipeline(m_shadowShader,
                               m_frameBuffer->getRenderPass()->get());
@@ -70,6 +72,13 @@ void AssimpModel::createCube() {
   m_cubeShader->setCullFlag(VK_CULL_MODE_BACK_BIT);
   m_cubeShader->setFrontFace(VK_FRONT_FACE_CLOCKWISE);
   m_cubeShader->prepare();
+
+  REGISTER_OBJECT<VulkanVertFragShader>(m_lineShader);
+  m_lineShader->setShaderObjPath(":/shaders/02_assimpmodel/line.vert.spv",
+                                 ":/shaders/02_assimpmodel/line.frag.spv");
+  m_lineShader->setCullFlag(VK_CULL_MODE_BACK_BIT);
+  m_lineShader->setFrontFace(VK_FRONT_FACE_CLOCKWISE);
+  m_lineShader->prepare();
 
   REGISTER_OBJECT<UniformCamera>(m_cubeUniform);
   m_cubeUniform->m_uboVS.lightpos = glm::vec4(10.0f, -10.0f, 10.0f, 1.0f);

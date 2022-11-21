@@ -40,6 +40,8 @@ class AssimpModel : public ThirdPersonEngine {
   std::shared_ptr<UniformCamera> m_cubeUniform = nullptr;
   std::shared_ptr<VulkanTexture2D> m_cubeTextureA = nullptr;
   std::shared_ptr<VulkanTexture2D> m_cubeTextureB = nullptr;
+  // line shader for drawing lines
+  std::shared_ptr<VulkanVertFragShader> m_lineShader = nullptr;
 
   // debug plane + shader
   std::shared_ptr<VulkanPlane> m_debugPlane = nullptr;
