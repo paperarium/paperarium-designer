@@ -15,6 +15,8 @@ class AssimpObject : public MeshObject {
   void generateVertex() override;
   void updateVertex() override{};
 
+  glm::vec3* getCenter() { return &m_modelCenter; }
+
   virtual void build(VkCommandBuffer& cmdBuffer,
                      VulkanShader* vulkanShader) override;
   virtual void build(VkCommandBuffer& cmdBuffer,
@@ -25,6 +27,7 @@ class AssimpObject : public MeshObject {
  protected:
   std::string m_modelPath;
   vks::Model* m_model = nullptr;
+  glm::vec3 m_modelCenter;
 };
 
 }  // namespace VulkanEngine

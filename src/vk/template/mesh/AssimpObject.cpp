@@ -18,6 +18,7 @@ void AssimpObject::generateVertex() {
                          vks::Component::VERTEX_COMPONENT_NORMAL});
   m_model->loadFromFile(m_modelPath, layout, 1.f, m_context->vulkanDevice,
                         m_context->queue, nullptr);
+  m_modelCenter = (m_model->dim.max + m_model->dim.min) * 0.5f;
 }
 
 void AssimpObject::build(VkCommandBuffer& cmdBuffer,

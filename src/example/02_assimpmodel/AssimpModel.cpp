@@ -82,7 +82,7 @@ void AssimpModel::createCube() {
 
   REGISTER_OBJECT<UniformCamera>(m_cubeUniform);
   m_cubeUniform->m_uboVS.lightpos = glm::vec4(10.0f, -10.0f, 10.0f, 1.0f);
-  m_cubeUniform->m_pCameraPos = &m_camera.m_cameraPos;
+  m_cubeUniform->m_pCameraPos = m_assimpObject->getCenter();
   m_cubeUniform->m_pRotation = &m_camera.m_rotation;
   m_cubeUniform->m_pZoom = &m_camera.m_zoom;
   m_cubeUniform->prepare();
