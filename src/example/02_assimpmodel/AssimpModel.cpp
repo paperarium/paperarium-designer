@@ -69,14 +69,14 @@ void AssimpModel::createCube() {
   REGISTER_OBJECT<VulkanVertFragShader>(m_cubeShader);
   m_cubeShader->setShaderObjPath(":/shaders/02_assimpmodel/scene.vert.spv",
                                  ":/shaders/02_assimpmodel/scene.frag.spv");
-  m_cubeShader->setCullFlag(VK_CULL_MODE_BACK_BIT);
+  m_cubeShader->setCullFlag(VK_CULL_MODE_NONE);
   m_cubeShader->setFrontFace(VK_FRONT_FACE_CLOCKWISE);
   m_cubeShader->prepare();
 
   REGISTER_OBJECT<VulkanVertFragShader>(m_lineShader);
   m_lineShader->setShaderObjPath(":/shaders/02_assimpmodel/line.vert.spv",
                                  ":/shaders/02_assimpmodel/line.frag.spv");
-  m_lineShader->setCullFlag(VK_CULL_MODE_BACK_BIT);
+  m_lineShader->setCullFlag(VK_CULL_MODE_NONE);
   m_lineShader->setFrontFace(VK_FRONT_FACE_CLOCKWISE);
   m_lineShader->prepare();
 
