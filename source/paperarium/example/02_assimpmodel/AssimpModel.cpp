@@ -4,6 +4,11 @@ namespace VulkanEngine {
 
 AssimpModel::~AssimpModel() noexcept { destroyObjects(); }
 
+void AssimpModel::getDeviceFeatures() {
+  // enable fillmodenonsolid if it exists in the physical device's features
+  m_enabledFeatures.fillModeNonSolid = m_deviceFeatures.fillModeNonSolid;
+}
+
 void AssimpModel::prepareFunctions() {
   m_functions.emplace_back([this] { seeDebugQuad(); });
 }

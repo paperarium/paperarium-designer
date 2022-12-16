@@ -18,6 +18,7 @@ class AssimpModel : public ThirdPersonEngine {
   AssimpModel() = default;
   ~AssimpModel() noexcept;
 
+  void getDeviceFeatures() override;
   void prepareFunctions() override;
   void prepareMyObjects() override;
   void buildMyObjects(VkCommandBuffer& cmd) override;

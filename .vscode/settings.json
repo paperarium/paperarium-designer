@@ -1,10 +1,12 @@
 {
   "C_Cpp.intelliSenseEngine": "Tag Parser",
   "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 2, ColumnLimit: 0 }",
+  "editor.rulers": [80],
   "cmake.cmakePath": "/usr/local/bin/cmake",
   "cmake.configureSettings": {
     "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake",
-    "USE_STD_EXPERIMENTAL_FILESYSTEM": true
+    "USE_STD_EXPERIMENTAL_FILESYSTEM": true,
+    "CMAKE_PREFIX_PATH": "/Users/evan/Qt/6.4.0/macos"
   },
   "cmake.debugConfig": {
     "MIMode": "lldb"
@@ -102,7 +104,7 @@
   },
   "fileHeaderComment.parameter": {
     "*": {
-      "company": "Paperarium Design",
+      "company": "Paperarium",
       "name": "Evan Kirkiles"
     }
   },

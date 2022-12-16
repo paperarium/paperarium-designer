@@ -40,9 +40,9 @@ $ git clone --recurse-submodules https://github.com/paperarium/paperarium-design
 # Go into the repository
 $ cd paperarium-designer
 
-# Set up VCPKG and install the ASSIMP, GLM, OpenMP, and Vulkan dependencies
+# Set up VCPKG and install the ASSIMP, GLM, ImGUI, and Vulkan dependencies
 $ ./lib/vcpkg/bootstrap-vcpkg.sh
-$ ./lib/vcpkg/vcpkg install assimp glm openmp vulkan
+$ ./lib/vcpkg/vcpkg install assimp glm imgui vulkan
 ```
 
 > **Note**
