@@ -29,4 +29,17 @@ typedef enum eGPUOSType {
   GPU_OS_ANY = (0xff00),
 } eGPUOSType;
 
+typedef enum eGPUDriverType {
+  GPU_DRIVER_OFFICIAL = (1 << 16),
+  GPU_DRIVER_OPENSOURCE = (1 << 17),
+  GPU_DRIVER_SOFTWARE = (1 << 18),
+  GPU_DRIVER_ANY = (0xff0000),
+} eGPUDriverType;
+
+typedef enum eGPUSupportLevel {
+  GPU_SUPPORT_LEVEL_SUPPORTED,
+  GPU_SUPPORT_LEVEL_LIMITED,
+  GPU_SUPPORT_LEVEL_UNSUPPORTED,
+} eGPUSupportLevel;
+
 #endif /* GPU_PLATFORM_H */

@@ -100,7 +100,8 @@
     "iterator": "cpp",
     "memory_resource": "cpp",
     "utility": "cpp",
-    "stop_token": "cpp"
+    "stop_token": "cpp",
+    "__functional_base": "cpp"
   },
   "fileHeaderComment.parameter": {
     "*": {

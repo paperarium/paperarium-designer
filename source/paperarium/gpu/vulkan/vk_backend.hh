@@ -20,6 +20,42 @@ class VKBackend : public GPUBackend {
 
   void delete_resources() override;
 
+  /**
+   * @brief Initializes a VKContext for a surface
+   */
+  Context* context_alloc(
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+      HINSTANCE platformHandle, HWND platformWindow
+#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
+      IDirectFB* dfb, IDirectFBSurface* window
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+      wl_display* display, wl_surface* window
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+      xcb_connection_t* connection, xcb_window_t window
+#elif defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK)
+      void* view
+#elif defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT)
+      uint32_t width, uint32_t height
+#endif
+      ) override {
+    return new VKContext(
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+        platformHandle, platformWindow,
+#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
+        dfb, window,
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+        display, window,
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+        connection, window,
+#elif defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK)
+        view,
+#elif defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT)
+        width, height,
+#endif
+        true  // <--- DEBUG VALUE
+    );
+  }
+
   Batch* batch_alloc() override;
   DrawList* drawlist_alloc(int list_length) override;
   Fence* fence_alloc() override;
@@ -43,7 +79,7 @@ class VKBackend : public GPUBackend {
   static void capabilities_init(VKContext& context);
 
  private:
-  static void init_platform();
+  static void platform_init();
   static void platform_exit();
 }
 

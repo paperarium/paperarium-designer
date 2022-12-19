@@ -1,11 +1,14 @@
 /*
  * gpu_backend.hh
  * Created by: Evan Kirkiles
- * Created on: Fri Dec 16 2022
+ * Created on: Sun Dec 18 2022
+ * From: source/blender/gpu/intern/gpu_backend.hh
  * for Paperarium
  */
 #ifndef GPU_BACKEND_HH
 #define GPU_BACKEND_HH
+
+// #include "GPU_vertex_buffer.h"
 
 namespace paperarium::gpu {
 
@@ -36,6 +39,9 @@ class GPUBackend {
 
   static GPUBackend* get();
 
+  virtual Context* context_alloc() = 0;
+
+  virtual Batch* batch_alloc() = 0;
   virtual Fence* fence_alloc() = 0;
   virtual FrameBuffer* framebuffer_alloc(char const* name) = 0;
   virtual IndexBuf* indexbuf_alloc() = 0;
