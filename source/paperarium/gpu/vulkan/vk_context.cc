@@ -7,18 +7,19 @@
 
 #include "vk_context.hh"
 #include "vk_tools.h"
+#include <array>
 
 // declare some helpers which exist at the end of the file
 static std::vector<VkLayerProperties> layers_get_available();
 static bool layers_enable_layer(
     std::vector<VkLayerProperties>& layers_available,
-    vector<char const*>& layers_enabled, char const* layer_name);
+    std::vector<char const*>& layers_enabled, char const* layer_name);
 static std::vector<VkExtensionProperties> exts_get_available();
 static bool exts_enable_ext(
     std::vector<VkExtensionProperties>& extensions_available,
-    vector<char const*>& extensions_enabled, char const* ext_name);
+    std::vector<char const*>& extensions_enabled, char const* ext_name);
 static bool exts_device_supports(VkPhysicalDevice device,
-                                 vector<char const*>& extensions_enabled);
+                                 std::vector<char const*>& extensions_enabled);
 
 /* -------------------------------- VKContext ------------------------------- */
 // ! TODO: Destructurs for all of the things initialized in drawing context
@@ -33,43 +34,11 @@ int const MAX_FRAMES_IN_FLIGHT = 2;
  *
  * Sets member variables related to the surface to be drawn to.
  */
-VKContext::VKContext(
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-    HINSTANCE platformHandle, HWND platformWindow,
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-    IDirectFB* dfb, IDirectFBSurface* window,
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    wl_display* display, wl_surface* window,
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-    xcb_connection_t* connection, xcb_window_t window,
-#elif (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
-    void* view,
-#elif defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT)
-    uint32_t width, uint32_t height,
-#endif
-    bool debug)
+VKContext::VKContext(PLATF_SURF_PARAMS, bool debug)
     : Context(),
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-      m_platform_handle(platformHandle),
-      m_platform_window(platformWindow),
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-      m_platform_dfb(dfb),
-      m_platform_window(window),
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-      m_platform_display(display),
-      m_platform_surface(window),
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-      m_platform_connection(connection),
-      m_platform_window(window),
-#elif (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
-      m_platform_view(view),
-#elif (defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT))
-      m_platform_width(width),
-      m_platform_height(height),
-#endif
-      m_win_id(win_id),
+      PLATF_SURF_INITIALIZERS,
       m_debug(debug),
-      m_isntance(VK_NULL_HANDLE),
+      m_instance(VK_NULL_HANDLE),
       m_physical_device(VK_NULL_HANDLE),
       m_device(VK_NULL_HANDLE),
       m_queue(VK_NULL_HANDLE),
@@ -80,16 +49,17 @@ VKContext::VKContext(
   bool const use_window_surface = true;  // keep this on for now (headless?)
 
   // build the vulkan instance on the surface
-  if (!createInstance(use_window_surface)) return PAPER_kFailure;
+  PAPER_CHECK_RESULT(createInstance(use_window_surface))
   if (use_window_surface) initSwapchain();
-  if (!pickPhysicalDevice()) return PAPER_kFailure;
-  if (!createLogicalDevice()) return PAPER_kFailure;
-  if (!createSwapchain()) return PAPER_kFailure;
-  if (!createCommandBuffers()) return PAPER_kFailure;
-  if (!createSynchronizationPrimitives()) return PAPER_kFailure;
-  if (!createDepthStencil()) return PAPER_kFailure;
-  if (!createRenderPass()) return PAPER_kFailure;
-  if (!createFramebuffers()) return PAPER_kFailure;
+  PAPER_CHECK_RESULT(pickPhysicalDevice());
+  PAPER_CHECK_RESULT(createLogicalDevice());
+  PAPER_CHECK_RESULT(createSwapchain());
+  PAPER_CHECK_RESULT(createCommandBuffers());
+  PAPER_CHECK_RESULT(createSynchronizationPrimitives());
+  PAPER_CHECK_RESULT(createDepthStencil());
+  PAPER_CHECK_RESULT(createRenderPass());
+  PAPER_CHECK_RESULT(createPipelineCache());
+  PAPER_CHECK_RESULT(createFramebuffers());
 }
 
 /**
@@ -98,7 +68,7 @@ VKContext::VKContext(
  * Entirely deletes the Vulkan instance and all of its components.
  */
 VKContext::~VKContext() {
-  if (m_queue != VK_NULL_HANDLE) VK_CHECK_RESULT(vkDeviceWaitIdle(m_queue));
+  if (m_queue != VK_NULL_HANDLE) VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
   if (m_device != VK_NULL_HANDLE) VK_CHECK_RESULT(vkDeviceWaitIdle(m_device));
   destroySwapchain();
   VK_SAFE_DELETE(m_render_pass,
@@ -108,6 +78,7 @@ VKContext::~VKContext() {
   VK_SAFE_DELETE(m_device, vkDestroyDevice(m_device, NULL));
   VK_SAFE_DELETE(m_surface, vkDestroySurfaceKHR(m_instance, m_surface, NULL));
   VK_SAFE_DELETE(m_instance, vkDestroyInstance(m_instance, NULL));
+  delete m_vulkan_device;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -126,7 +97,7 @@ VKContext::~VKContext() {
 //   7.  createDepthStencil (! not implemented currently)
 //   8.  createRenderPass
 //   9.  createPipelineCache
-//   10. createFramebuffers (done for us in CreateSwapChain)
+//   10. createFramebuffers
 // (See constructor for function calls)
 
 /* -------------------------------------------------------------------------- */
@@ -162,7 +133,7 @@ PAPER_TSuccess VKContext::createInstance(bool use_window_surface) {
   /* -------------------------- INSTANCE EXTENSIONS ------------------------- */
 
   // get the available layers and extensions
-  m_required_device_extensions.resize(0);
+  m_enabled_device_extensions.resize(0);
   auto layers_av = layers_get_available();
   auto ext_av = exts_get_available();
   std::vector<char const*> layers_enbl;
@@ -181,7 +152,7 @@ PAPER_TSuccess VKContext::createInstance(bool use_window_surface) {
     char const* native_surface_ext = getPlatformSpecificSurfaceExtension();
     exts_enable_ext(ext_av, ext_enbl, VK_KHR_SURFACE_EXTENSION_NAME);
     exts_enable_ext(ext_av, ext_enbl, native_surface_ext);
-    m_required_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    m_enabled_device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   }
 
 // When running on iOS/macOS with MoltenVK and VK_KHR_portability_enumeration
@@ -194,8 +165,7 @@ PAPER_TSuccess VKContext::createInstance(bool use_window_surface) {
   exts_enable_ext(ext_av, ext_enbl,
                   VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
   instanceCreateInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-  m_required_device_extensions.push_back(
-      VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+  m_enabled_device_extensions.push_back("VK_KHR_portability_subset");
 #endif
 
   // finally, add the extensions and layer information to the instance creator
@@ -206,7 +176,7 @@ PAPER_TSuccess VKContext::createInstance(bool use_window_surface) {
   instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(ext_enbl.size());
 
   // and build the instance!
-  VK_CHECK_RESULT(vkCreateInstance(&create_info, NULL, &m_instance));
+  VK_CHECK_RESULT(vkCreateInstance(&instanceCreateInfo, NULL, &m_instance));
   return PAPER_kSuccess;
 }
 
@@ -243,7 +213,7 @@ PAPER_TSuccess VKContext::pickPhysicalDevice() {
   m_physical_device = VK_NULL_HANDLE;
   uint32_t device_count = 0;
   vkEnumeratePhysicalDevices(m_instance, &device_count, NULL);
-  vector<VkPhysicalDevice> physical_devices(device_count);
+  std::vector<VkPhysicalDevice> physical_devices(device_count);
   vkEnumeratePhysicalDevices(m_instance, &device_count,
                              physical_devices.data());
 
@@ -260,7 +230,7 @@ PAPER_TSuccess VKContext::pickPhysicalDevice() {
     DEBUG_PRINTF("%s : \n", device_properties.deviceName);
 
     // check if the device supports our extensions
-    if (!exts_device_supports(physical_device, m_required_device_extensions)) {
+    if (!exts_device_supports(physical_device, m_enabled_device_extensions)) {
       DEBUG_PRINTF(" - Device does not support required device extensions.\n");
       continue;
     }
@@ -306,6 +276,9 @@ PAPER_TSuccess VKContext::pickPhysicalDevice() {
       case VK_PHYSICAL_DEVICE_TYPE_CPU:
         device_score = 100;
         break;
+      default:
+        device_score = 0;
+        break;
     }
     if (device_score > best_device_score) {
       m_physical_device = physical_device;
@@ -336,22 +309,23 @@ PAPER_TSuccess VKContext::pickPhysicalDevice() {
  */
 PAPER_TSuccess VKContext::createLogicalDevice() {
   // initialize a VulkanDevice from the physical device data
-  m_vulkan_device = new vks::VulkanDevice(m_physical_device);
+  m_vulkan_device = new vks::VKDevice(m_physical_device);
 
   // set our device features for the logical device
   VkPhysicalDeviceFeatures device_features = {};
 #if STRICT_REQUIREMENTS
   device_features.geometryShader = VK_TRUE;
 #endif
-  m_result = m_vulkan_device->createLogicalDevice(
-      device_features, m_enabled_device_extensions, m_deviceCreatepNextChain);
-  m_device = m_vulkan_device->logicalDevice;
+  VkResult result = m_vulkan_device->createLogicalDevice(
+      device_features, m_enabled_device_extensions, NULL);
+  m_device = (VkDevice)(*m_vulkan_device);
   // get the device graphics queue
-  vkGetDeviceQueue(m_device, m_vulkanDevice->m_queue_family_indices.graphics, 0,
-                   &m_queue);
+  uint32_t graphics_queue_i =
+      m_vulkan_device->getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+  vkGetDeviceQueue(m_device, graphics_queue_i, 0, &m_queue);
 
   // link the Vulkan instance's swapchain from logical to physical device
-  m_swapchain.connect(m_instance, m_physicalDevice, m_device);
+  m_swapchain.connect(m_instance, m_physical_device, m_device);
   return PAPER_kSuccess;
 }
 
@@ -417,7 +391,7 @@ PAPER_TSuccess VKContext::createSwapchain() {
   m_swapchain.create(&m_render_extent.width, &m_render_extent.height);
   m_in_flight_images.resize(m_swapchain.imageCount);
   m_swapchain_framebuffers.resize(m_swapchain.imageCount);
-  return PAPER_TSuccess;
+  return PAPER_kSuccess;
 }
 
 /**
@@ -495,8 +469,7 @@ PAPER_TSuccess VKContext::destroySynchronizationPrimitives() {
     vkDestroySemaphore(m_device, semaphore, NULL);
   for (auto semaphore : m_render_finished_semaphores)
     vkDestroySemaphore(m_device, semaphore, NULL);
-  for (auto fence : m_in_flight_fences)
-    vkDestroyFence(m_device, m_in_flight_fences, NULL);
+  for (auto fence : m_in_flight_fences) vkDestroyFence(m_device, fence, NULL);
   for (auto framebuffer : m_swapchain_framebuffers)
     vkDestroyFramebuffer(m_device, framebuffer, NULL);
   return PAPER_kSuccess;
@@ -577,12 +550,12 @@ PAPER_TSuccess VKContext::createDepthStencil() {
  * @return PAPER_TSuccess Success always
  */
 PAPER_TSuccess VKContext::destroyDepthStencil() {
-  VK_SAFE_DELETE(m_depthStencil.view,
-                 vkDestroyImageView(m_device, m_depthStencil.view, nullptr));
-  VK_SAFE_DELETE(m_depthStencil.image,
-                 vkDestroyImage(m_device, m_depthStencil.image, nullptr));
-  VK_SAFE_DELETE(m_depthStencil.mem,
-                 vkFreeMemory(m_device, m_depthStencil.mem, nullptr));
+  VK_SAFE_DELETE(m_depth_stencil.view,
+                 vkDestroyImageView(m_device, m_depth_stencil.view, nullptr));
+  VK_SAFE_DELETE(m_depth_stencil.image,
+                 vkDestroyImage(m_device, m_depth_stencil.image, nullptr));
+  VK_SAFE_DELETE(m_depth_stencil.mem,
+                 vkFreeMemory(m_device, m_depth_stencil.mem, nullptr));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -616,7 +589,7 @@ PAPER_TSuccess VKContext::createRenderPass() {
   colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
   // define the depth attachment
-  attachments[1].format = m_depthFormat;
+  attachments[1].format = m_depth_format;
   attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
   attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -669,11 +642,34 @@ PAPER_TSuccess VKContext::createRenderPass() {
   renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
   renderPassInfo.pAttachments = attachments.data();
   renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpassDescription;
+  renderPassInfo.pSubpasses = &subpass;
   renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
   renderPassInfo.pDependencies = dependencies.data();
   VK_CHECK_RESULT(
-      vkCreateRenderPass(m_device, &renderPassinfo, nullptr, &m_render_pass));
+      vkCreateRenderPass(m_device, &renderPassInfo, nullptr, &m_render_pass));
+  return PAPER_kSuccess;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                PIELINE CACHE                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Creates the Vulkan pipeline cache
+ *
+ * Pipeline cache objects allow the result of pipeline construction to be reused
+ * between pipelines and between runs of an application. Reuse between pipelines
+ * is achieved by passing the same pipeline cache object when creating multiple
+ * related pipelines. Reuse across runs of an application is achieved by
+ * retrieving pipeline cache contents in one run of an application, saving the
+ * contents, and using them to preinitialize a pipeline cache on a subsequent
+ * run.
+ */
+PAPER_TSuccess VKContext::createPipelineCache() {
+  VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
+  pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+  VK_CHECK_RESULT(vkCreatePipelineCache(m_device, &pipelineCacheCreateInfo,
+                                        nullptr, &m_pipeline_cache));
   return PAPER_kSuccess;
 }
 
@@ -746,7 +742,6 @@ PAPER_TSuccess VKContext::destroyFramebuffers() {
  */
 PAPER_TSuccess VKContext::swapBuffers() {
   // wait until current frame is ready to present
-  if (m_swapchain == VK_NULL_HANDLE) return PAPER_kFailure;
   vkWaitForFences(m_device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE,
                   UINT64_MAX);
 
@@ -780,13 +775,13 @@ PAPER_TSuccess VKContext::swapBuffers() {
   submit_info.signalSemaphoreCount = 1;
   submit_info.pSignalSemaphores = &m_render_finished_semaphores[m_currentFrame];
   vkResetFences(m_device, 1, &m_in_flight_fences[m_currentFrame]);
-  VK_CHECK_RESULT(vkQueueSubmit(m_vulkan_device.queue, 1, &submit_info,
+  VK_CHECK_RESULT(vkQueueSubmit(m_queue, 1, &submit_info,
                                 m_in_flight_fences[m_currentFrame]));
   do {
     result = vkWaitForFences(m_device, 1, &m_in_flight_fences[m_currentFrame],
                              VK_TRUE, 10000);
   } while (result == VK_TIMEOUT);
-  VK_CHECK(vkQueueWaitIdle(m_graphic_queue));
+  VK_CHECK_RESULT(vkQueueWaitIdle(m_queue));
 
   // now present the finished image
   result = m_swapchain.queuePresent(
@@ -814,7 +809,7 @@ PAPER_TSuccess VKContext::swapBuffers() {
  * synchronization primitives, command buffers, and swap chain, and rebuilds
  * them.
  */
-void VKContext::recreateSwapchain() {
+PAPER_TSuccess VKContext::recreateSwapchain() {
   // ensure all operations on the device have been finished before destruction
   vkDeviceWaitIdle(m_device);
 
@@ -826,7 +821,7 @@ void VKContext::recreateSwapchain() {
   destroyCommandBuffers();
 
   // recreate the swap chain at new dimensions
-  createSwapChain();
+  createSwapchain();
 
   // create the swap chain and successive components
   createCommandBuffers();
@@ -837,6 +832,7 @@ void VKContext::recreateSwapchain() {
 
   // wait for idle again for next frame
   vkDeviceWaitIdle(m_device);
+  return PAPER_kSuccess;
 }
 
 }  // namespace paperarium::gpu
@@ -857,7 +853,7 @@ void VKContext::recreateSwapchain() {
 static std::vector<VkLayerProperties> layers_get_available() {
   uint32_t layer_count = 0;
   vkEnumerateInstanceLayerProperties(&layer_count, NULL);
-  vector<VkLayerProperties> layers(layer_count);
+  std::vector<VkLayerProperties> layers(layer_count);
   vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
   return layers;
 }
@@ -869,7 +865,7 @@ static std::vector<VkLayerProperties> layers_get_available() {
  */
 static bool layers_enable_layer(
     std::vector<VkLayerProperties>& layers_available,
-    vector<char const*>& layers_enabled, char const* layer_name) {
+    std::vector<char const*>& layers_enabled, char const* layer_name) {
   for (auto const& layer : layers_available) {
     if (strcmp(layer_name, layer.layerName) == 0) {
       layers_enabled.push_back(layer_name);
@@ -890,8 +886,9 @@ static bool layers_enable_layer(
 static std::vector<VkExtensionProperties> exts_get_available() {
   uint32_t ext_count = 0;
   vkEnumerateInstanceExtensionProperties(nullptr, &ext_count, nullptr);
-  vector<VkExtensionProperties> extensions(ext_count);
-  vkEnumerateInstanceExtensionProperties(&ext_count, extensions.data());
+  std::vector<VkExtensionProperties> extensions(ext_count);
+  vkEnumerateInstanceExtensionProperties(nullptr, &ext_count,
+                                         extensions.data());
   return extensions;
 }
 
@@ -902,10 +899,10 @@ static std::vector<VkExtensionProperties> exts_get_available() {
  */
 static bool exts_enable_ext(
     std::vector<VkExtensionProperties>& extensions_available,
-    vector<char const*>& extensions_enabled, char const* ext_name) {
+    std::vector<char const*>& extensions_enabled, char const* ext_name) {
   for (auto const& extension : extensions_available) {
     if (strcmp(ext_name, extension.extensionName) == 0) {
-      layers_enabled.push_back(layer_name);
+      extensions_enabled.push_back(ext_name);
       return true;
     }
   }
@@ -919,13 +916,13 @@ static bool exts_enable_ext(
  * @return Indication if the extension is supported
  */
 static bool exts_device_supports(VkPhysicalDevice device,
-                                 vector<char const*>& extensions_enabled) {
+                                 std::vector<char const*>& extensions_enabled) {
   uint32_t ext_count;
   vkEnumerateDeviceExtensionProperties(device, NULL, &ext_count, NULL);
-  vector<VkExtensionProperties> available_exts(ext_count);
+  std::vector<VkExtensionProperties> available_exts(ext_count);
   vkEnumerateDeviceExtensionProperties(device, NULL, &ext_count,
                                        available_exts.data());
-  for (auto const& extension_needed : required_exts) {
+  for (auto const& extension_needed : extensions_enabled) {
     bool found = false;
     for (auto const& extension : available_exts) {
       if (strcmp(extension_needed, extension.extensionName) == 0) {

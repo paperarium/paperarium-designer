@@ -15,17 +15,6 @@ namespace paperarium::gpu {
 // the global GPU platform instance
 GPUPlatformGlobal GPG;
 
-static char* create_gpu_name(char const* vendor, char const* renderer,
-                             char const* version) {
-  DynStr* ds = BLI_dynstr_new();
-  BLI_dynstr_appendf(ds, "%s %s %s", vendor, renderer, version);
-  char* gpu_name = BLI_dynstr_get_cstring(ds);
-  BLI_dynstr_free(ds);
-  BLI_str_replace_char(gpu_name, '\n', ' ');
-  BLI_str_replace_char(gpu_name, '\r', ' ');
-  return gpu_name;
-}
-
 /* -------------------------------------------------------------------------- */
 /*                              GPUPlatformGlobal                             */
 /* -------------------------------------------------------------------------- */

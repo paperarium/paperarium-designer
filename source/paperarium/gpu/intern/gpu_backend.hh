@@ -8,6 +8,8 @@
 #ifndef GPU_BACKEND_HH
 #define GPU_BACKEND_HH
 
+#include "gpu_common.h"
+
 // #include "GPU_vertex_buffer.h"
 
 namespace paperarium::gpu {
@@ -34,23 +36,24 @@ class VertBuf;
  */
 class GPUBackend {
  public:
-  virtual ~GPUBACKEND() = default;
+  virtual ~GPUBackend() = default;
   virtual void delete_resources() = 0;
 
   static GPUBackend* get();
 
-  virtual Context* context_alloc() = 0;
+  virtual Context* context_alloc(PLATF_SURF_PARAMS) = 0;
 
   virtual Batch* batch_alloc() = 0;
+  virtual DrawList* drawlist_alloc(int list_length) = 0;
   virtual Fence* fence_alloc() = 0;
   virtual FrameBuffer* framebuffer_alloc(char const* name) = 0;
   virtual IndexBuf* indexbuf_alloc() = 0;
-  virtual PixelBuffer* pixelbuf_alloc(uint size) = 0;
   virtual QueryPool* querypool_alloc() = 0;
   virtual Shader* shader_alloc(char const* name) = 0;
   virtual Texture* texture_alloc(char const* name) = 0;
   virtual UniformBuf* uniformbuf_alloc(int size, char const* name) = 0;
-  virtual StorageBuf* storagebuf_alloc(int size, GPUUsageType usage,
+  virtual StorageBuf* storagebuf_alloc(int size,
+                                       // GPUUsageType usage,
                                        char const* name) = 0;
   virtual VertBuf* vertbuf_alloc() = 0;
 
@@ -58,7 +61,7 @@ class GPUBackend {
   virtual void render_begin() = 0;
   virtual void render_end() = 0;
   virtual void render_step() = 0;
-}
+};
 
 }  // namespace paperarium::gpu
 

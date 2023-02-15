@@ -7,6 +7,7 @@
  */
 
 #include "vk_backend.hh"
+#include "gpu_platform_private.hh"
 #include "vk_initializers.hh"
 #include <assert.h>
 #include <vector>
@@ -19,7 +20,7 @@ void VKBackend::platform_init() {
 
   // get the device properties, which include vendor information
   // ! This will not work. Platform_init must be called after vkcontext is made.
-  auto device_properties = VKContext::get()->device.m_properties;
+  auto device_properties = VKContext::get()->m_vulkan_device->m_properties;
   uint32_t apiVersion = device_properties.apiVersion;
   uint32_t driverVersion = device_properties.driverVersion;
   uint32_t vendorID = device_properties.vendorID;
@@ -60,13 +61,13 @@ void VKBackend::platform_init() {
         "Warning: Could not find a matching GPU name. Things may not behave as "
         "expected.\n");
     printf("Detected Vulkan configuration:\n");
-    printf("Vendor: %08X\n", vendor);
+    printf("Vendor: %08X\n", vendorID);
     printf("Device ID: %08X\n", deviceID);
   }
 
   // initialize GPG
-  GPG.init(device, os, driver, support_level, GPU_BACKEND_VULKAN, vendor,
-           renderer, version);
+  // GPG.init(device, os, driver, support_level, GPU_BACKEND_VULKAN, vendor,
+  //          renderer, version);
 }
 
 /**

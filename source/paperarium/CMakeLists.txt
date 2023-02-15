@@ -1,0 +1,5 @@
+add_subdirectory(draw)
+add_subdirectory(gpu)
+# add_subdirectory(mesh)
+add_subdirectory(paperkernel)
+add_subdirectory(makesdna)

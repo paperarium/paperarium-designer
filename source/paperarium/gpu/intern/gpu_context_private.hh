@@ -5,10 +5,15 @@
  * From: source/blender/gpu/intern/gpu_context_private.hh
  * for Paperarium
  */
+
 #ifndef GPU_CONTEXT_PRIVATE_HH
 #define GPU_CONTEXT_PRIVATE_HH
 
-#include "vulkan/vulkan.h"
+#include "GPU_context.h"
+#include "gpu_common.h"
+#include "gpu_framebuffer_private.hh"
+#include "gpu_matrix_private.hh"
+#include <pthread.h>
 
 namespace paperarium::gpu {
 
@@ -16,16 +21,8 @@ class Context {
  public:
   /** State management */
   Shader* shader = nullptr;
-  FrameBuffer* active_fb = nullptr;
-
- protected:
-  /** Thread on which this context is active. */
-  pthread_t thread_;
-  bool is_active_;
-
- public:
-  Context();
-  virtual ~Context();
+  Framebuffer* active_fb = nullptr;
+  GPUMatrixState* matrix_state = nullptr;
 
   /**
    * All 4 window frame-buffers.
@@ -34,24 +31,27 @@ class Context {
    * Front frame-buffers contains (in principle, but not always) the last frame
    * color. Default frame-buffer is back_left.
    */
-  FrameBuffer* back_left = nullptr;
-  FrameBuffer* front_left = nullptr;
-  FrameBuffer* back_right = nullptr;
-  FrameBuffer* front_right = nullptr;
+  Framebuffer* back_left = nullptr;
+  Framebuffer* front_left = nullptr;
 
   /* GPUContext counter used to assign a unique ID to each GPUContext. */
   static int context_counter;
   int context_id = 0;
+
+ public:
+  Context();
+  virtual ~Context();
+
+  static Context* get();
 
  protected:
   /** Thread on which this context is active. */
   pthread_t thread_;
   bool is_active_;
   /** Avoid including GHOST headers. Can be nullptr for off-screen contexts. */
-  void* ghost_window_;
+  PLATF_SURF_MEMBERS
 
-  static Context* get();
-
+ public:
   virtual void activate() = 0;
   virtual void deactivate() = 0;
   virtual void begin_frame() = 0;
@@ -61,6 +61,8 @@ class Context {
   virtual void flush() = 0;
   /* Will wait until the GPU has finished executing all command. */
   virtual void finish() = 0;
+
+  bool is_active_on_thread();
 };
 
 /* Syntactic sugar. */

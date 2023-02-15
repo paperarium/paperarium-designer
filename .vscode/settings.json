@@ -101,7 +101,8 @@
     "memory_resource": "cpp",
     "utility": "cpp",
     "stop_token": "cpp",
-    "__functional_base": "cpp"
+    "__functional_base": "cpp",
+    "__functional_base_03": "cpp"
   },
   "fileHeaderComment.parameter": {
     "*": {

@@ -14,23 +14,7 @@
 
 /** @brief Creates the platform specific surface abstraction of the native
  * platform window used for presentation */
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-void VulkanSwapChain::initSurface(void* platformHandle, void* platformWindow)
-#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-void VulkanSwapChain::initSurface(ANativeWindow* window)
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-void VulkanSwapChain::initSurface(IDirectFB* dfb, IDirectFBSurface* window)
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-void VulkanSwapChain::initSurface(wl_display* display, wl_surface* window)
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-void VulkanSwapChain::initSurface(xcb_connection_t* connection,
-                                  xcb_window_t window)
-#elif (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
-void VulkanSwapChain::initSurface(void* view)
-#elif (defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT))
-void VulkanSwapChain::initSurface(uint32_t width, uint32_t height)
-#endif
-{
+void VulkanSwapChain::initSurface(void* platformHandle, void* platformWindow) {
   VkResult err = VK_SUCCESS;
 
   // Create the os-specific surface

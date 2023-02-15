@@ -7,9 +7,13 @@
 #ifndef VK_CONTEXT_HH
 #define VK_CONTEXT_HH
 
+#include "gpu_common.h"
+#include "gpu_context_private.hh"
 #include "vk_device.hh"
+#include "vk_swapchain.hh"
 #include "vk_tools.h"
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
+#include <vector>
 
 namespace paperarium::gpu {
 
@@ -18,27 +22,18 @@ class VKContext : public Context {
 
  public:
   /** OS-specific window passed to constructor */
-  VKContext(
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-      HINSTANCE platformHandle, HWND platformWindow,
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-      IDirectFB* dfb, IDirectFBSurface* window,
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-      wl_display* display, wl_surface* window,
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-      xcb_connection_t* connection, xcb_window_t window,
-#elif defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK)
-      void* view,
-#elif defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT)
-      uint32_t width, uint32_t height,
-#endif
-      bool debug);
+  VKContext(PLATF_SURF_PARAMS, bool debug);
   ~VKContext();
 
-  void activate() override;
-  void deactivate() override;
-  void begin_frame() override;
-  void end_frame() override;
+  virtual void activate() override{};
+  virtual void deactivate() override{};
+  virtual void begin_frame() override{};
+  virtual void end_frame() override{};
+
+  /* Will push all pending commands to the GPU. */
+  virtual void flush() override{};
+  /* Will wait until the GPU has finished executing all command. */
+  virtual void finish() override{};
 
   static VKContext* get() { return static_cast<VKContext*>(Context::get()); }
 
@@ -47,24 +42,11 @@ class VKContext : public Context {
 
  private:
   /** OS-specific window references */
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-  HINSTANCE m_platform_handle;
+  /* For example,
+  HINSTANCE m_platform_handle; \
   HWND m_platform_window;
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-  IDirectFB* m_platform_dfb;
-  IDirectFBSurface *m_platform_window,
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-  wl_display* m_platform_display;
-  wl_display* m_platform_window;
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-  xcb_connection_t* m_platform_connection;
-  xcb_window_t m_platform_window;
-#elif defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK)
-  void* m_platform_view;
-#elif defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT)
-  uint32_t m_platform_width;
-  uint32_t m_platform_height;
-#endif
+  */
+  PLATF_SURF_MEMBERS
 
   // pretend to be Vulkan 1.0
   int const m_context_major_version = 1;
@@ -77,12 +59,12 @@ class VKContext : public Context {
   VkDevice m_device;
   VkQueue m_queue;
   VkCommandPool m_command_pool;
-  vks::VKDevice m_vulkan_device;  // wrapper around VkDevice
+  vks::VKDevice* m_vulkan_device;  // wrapper around VkDevice
 
   /** Vulkan resource synchronization */
   std::vector<VkFence> m_in_flight_fences;
   std::vector<VkFence> m_in_flight_images;
-  std::vector<VKSemaphore> m_image_available_semaphores;
+  std::vector<VkSemaphore> m_image_available_semaphores;
   std::vector<VkSemaphore> m_render_finished_semaphores;
 
   /** Depth stencil (always only one) */
@@ -101,6 +83,7 @@ class VKContext : public Context {
   std::vector<VkCommandBuffer> m_command_buffers;
   VkRenderPass m_render_pass;
   VkExtent2D m_render_extent;
+  VkPipelineCache m_pipeline_cache;
 
   /** Required device extensions */
   std::vector<char const*> m_enabled_device_extensions;
@@ -113,17 +96,35 @@ class VKContext : public Context {
   uint32_t m_swapchain_id = 0;
 
   char const* getPlatformSpecificSurfaceExtension() const;
+
+  // Vulkan instance initialization
   PAPER_TSuccess createInstance(bool use_window_surface = true);
   PAPER_TSuccess initSwapchain();
   PAPER_TSuccess pickPhysicalDevice();
   PAPER_TSuccess createLogicalDevice();
+
+  // Vulkan component creation
   PAPER_TSuccess createSwapchain();
   PAPER_TSuccess createSynchronizationPrimitives();
   PAPER_TSuccess createFramebuffers();
   PAPER_TSuccess createCommandBuffers();
-  PAPER_TSuccess recordCommandBuffers();
+  PAPER_TSuccess createDepthStencil();
   PAPER_TSuccess createRenderPass();
+  PAPER_TSuccess createPipelineCache();
+
+  // Vulkan component manipulation
+  PAPER_TSuccess recordCommandBuffers();
+  PAPER_TSuccess recreateSwapchain();
+
+  // Vulkan component destruction
+  PAPER_TSuccess destroyCommandBuffers();
+  PAPER_TSuccess destroyDepthStencil();
+  PAPER_TSuccess destroyFramebuffers();
+  PAPER_TSuccess destroySynchronizationPrimitives();
   PAPER_TSuccess destroySwapchain();
+
+  // Single frame of render loop
+  PAPER_TSuccess swapBuffers();
 };
 
 }  // namespace paperarium::gpu

@@ -39,7 +39,7 @@ class GPUPlatformGlobal {
             char const* renderer_str, char const* version_str);
 
   void clear();
-}
+};
 
 // platform is defined application-wide!
 extern GPUPlatformGlobal GPG;

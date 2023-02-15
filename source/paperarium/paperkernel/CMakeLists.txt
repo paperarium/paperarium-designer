@@ -12,7 +12,7 @@ set(SRC
   PKE_context.h)
 
 # create kernel library
-add_library(pp_paperkernel SRC)
+add_library(pp_paperkernel ${SRC})
 
 # add includes
-target_include_directories(pp_paperkernel INC)
+target_include_directories(pp_paperkernel PRIVATE ${INC})

@@ -6,7 +6,8 @@
  */
 
 #include "vk_device.hh"
-#include "vk_macros.h"
+#include "vk_initializers.hh"
+#include "vk_tools.h"
 #include <algorithm>
 #include <assert.h>
 #include <exception>
@@ -23,7 +24,7 @@ VKDevice::VKDevice(VkPhysicalDevice physicalDevice) {
   // Features should be checked by the examples before using them
   vkGetPhysicalDeviceFeatures(physicalDevice, &m_features);
   // Memory properties are used regularly for creating all kinds of buffers
-  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &m_memoryProperties);
+  vkGetPhysicalDeviceMemoryProperties(physicalDevice, &m_memory_properties);
   // Queue family properties, used for setting up requested queues upon device
   // creation
   uint32_t queueFamilyCount;
@@ -44,7 +45,7 @@ VKDevice::VKDevice(VkPhysicalDevice physicalDevice) {
                                              &extensions.front()) ==
         VK_SUCCESS) {
       for (auto ext : extensions) {
-        m_supported_extensions.push_back(ext.extensionName);
+        m_supported_extensions.emplace_back(ext.extensionName);
       }
     }
   }
@@ -123,7 +124,7 @@ VkResult VKDevice::createLogicalDevice(
     }
   } else {
     // Else we use the same queue
-    m_queue_family_indices.compute = queueFamilyIndices.graphics;
+    m_queue_family_indices.compute = m_queue_family_indices.graphics;
   }
 
   // Dedicated transfer queue
@@ -178,7 +179,7 @@ VkResult VKDevice::createLogicalDevice(
   // debugging tool is present)
   if (extensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
     deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-    enableDebugMarkers = true;
+    m_enable_debug_markers = true;
   }
 
   if (deviceExtensions.size() > 0) {
@@ -199,156 +200,158 @@ VkResult VKDevice::createLogicalDevice(
   return result;
 }
 
-/**
- * Create a buffer on the device
- *
- * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
- * uniform buffer)
- * @param memoryPropertyFlags Memory properties for this buffer (i.e. device
- * local, host visible, coherent)
- * @param size Size of the buffer in byes
- * @param buffer Pointer to the buffer handle acquired by the function
- * @param memory Pointer to the memory handle acquired by the function
- * @param data Pointer to the data that should be copied to the buffer after
- * creation (optional, if not set, no data is copied over)
- *
- * @return VK_SUCCESS if buffer handle and memory have been created and
- * (optionally passed) data has been copied
- */
-VkResult VKDevice::createBuffer(VkBufferUsageFlags usageFlags,
-                                VkMemoryPropertyFlags memoryPropertyFlags,
-                                VkDeviceSize size, VkBuffer* buffer,
-                                VkDeviceMemory* memory, void* data = nullptr) {
-  // Create the buffer handle
-  VkBufferCreateInfo bufferCreateInfo =
-      vks::initializers::bufferCreateInfo(usageFlags, size);
-  bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  VK_CHECK_RESULT(
-      vkCreateBuffer(m_logical_device, &bufferCreateInfo, nullptr, buffer));
+// /**
+//  * Create a buffer on the device
+//  *
+//  * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
+//  * uniform buffer)
+//  * @param memoryPropertyFlags Memory properties for this buffer (i.e. device
+//  * local, host visible, coherent)
+//  * @param size Size of the buffer in byes
+//  * @param buffer Pointer to the buffer handle acquired by the function
+//  * @param memory Pointer to the memory handle acquired by the function
+//  * @param data Pointer to the data that should be copied to the buffer after
+//  * creation (optional, if not set, no data is copied over)
+//  *
+//  * @return VK_SUCCESS if buffer handle and memory have been created and
+//  * (optionally passed) data has been copied
+//  */
+// VkResult VKDevice::createBuffer(VkBufferUsageFlags usageFlags,
+//                                 VkMemoryPropertyFlags memoryPropertyFlags,
+//                                 VkDeviceSize size, VkBuffer* buffer,
+//                                 VkDeviceMemory* memory, void* data) {
+//   // Create the buffer handle
+//   VkBufferCreateInfo bufferCreateInfo =
+//       vks::initializers::bufferCreateInfo(usageFlags, size);
+//   bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+//   VK_CHECK_RESULT(
+//       vkCreateBuffer(m_logical_device, &bufferCreateInfo, nullptr, buffer));
 
-  // Create the memory backing up the buffer handle
-  VkMemoryRequirements memReqs;
-  VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-  vkGetBufferMemoryRequirements(m_logical_device, *buffer, &memReqs);
-  memAlloc.allocationSize = memReqs.size;
-  // Find a memory type index that fits the properties of the buffer
-  memAlloc.memoryTypeIndex =
-      getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
-  VK_CHECK_RESULT(
-      vkAllocateMemory(m_logical_device, &memAlloc, nullptr, memory));
+//   // Create the memory backing up the buffer handle
+//   VkMemoryRequirements memReqs;
+//   VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+//   vkGetBufferMemoryRequirements(m_logical_device, *buffer, &memReqs);
+//   memAlloc.allocationSize = memReqs.size;
+//   // Find a memory type index that fits the properties of the buffer
+//   memAlloc.memoryTypeIndex =
+//       getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+//   VK_CHECK_RESULT(
+//       vkAllocateMemory(m_logical_device, &memAlloc, nullptr, memory));
 
-  // If a pointer to the buffer data has been passed, map the buffer and copy
-  // over the data
-  if (data != nullptr) {
-    void* mapped;
-    VK_CHECK_RESULT(
-        vkMapMemory(m_logical_device, *memory, 0, size, 0, &mapped));
-    memcpy(mapped, data, size);
-    // If host coherency hasn't been requested, do a manual flush to make
-    // writes visible
-    if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0) {
-      VkMappedMemoryRange mappedRange = vks::initializers::mappedMemoryRange();
-      mappedRange.memory = *memory;
-      mappedRange.offset = 0;
-      mappedRange.size = size;
-      vkFlushMappedMemoryRanges(m_logical_device, 1, &mappedRange);
-    }
-    vkUnmapMemory(m_logical_device, *memory);
-  }
+//   // If a pointer to the buffer data has been passed, map the buffer and copy
+//   // over the data
+//   if (data != nullptr) {
+//     void* mapped;
+//     VK_CHECK_RESULT(
+//         vkMapMemory(m_logical_device, *memory, 0, size, 0, &mapped));
+//     memcpy(mapped, data, size);
+//     // If host coherency hasn't been requested, do a manual flush to make
+//     // writes visible
+//     if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0) {
+//       VkMappedMemoryRange mappedRange =
+//       vks::initializers::mappedMemoryRange(); mappedRange.memory = *memory;
+//       mappedRange.offset = 0;
+//       mappedRange.size = size;
+//       vkFlushMappedMemoryRanges(m_logical_device, 1, &mappedRange);
+//     }
+//     vkUnmapMemory(m_logical_device, *memory);
+//   }
 
-  // Attach the memory to the buffer object
-  VK_CHECK_RESULT(vkBindBufferMemory(m_logical_device, *buffer, *memory, 0));
-  return VK_SUCCESS;
-}
+//   // Attach the memory to the buffer object
+//   VK_CHECK_RESULT(vkBindBufferMemory(m_logical_device, *buffer, *memory, 0));
+//   return VK_SUCCESS;
+// }
 
-/**
- * Create a buffer on the device
- *
- * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
- * uniform buffer)
- * @param memoryPropertyFlags Memory properties for this buffer (i.e. device
- * local, host visible, coherent)
- * @param buffer Pointer to a vk::Vulkan buffer object
- * @param size Size of the buffer in byes
- * @param data Pointer to the data that should be copied to the buffer after
- * creation (optional, if not set, no data is copied over)
- *
- * @return VK_SUCCESS if buffer handle and memory have been created and
- * (optionally passed) data has been copied
- */
-VkResult VKDevice::createBuffer(VkBufferUsageFlags usageFlags,
-                                VkMemoryPropertyFlags memoryPropertyFlags,
-                                vks::Buffer* buffer, VkDeviceSize size,
-                                void* data) {
-  buffer->device = m_logicalDevice;
+// /**
+//  * Create a buffer on the device
+//  *
+//  * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
+//  * uniform buffer)
+//  * @param memoryPropertyFlags Memory properties for this buffer (i.e. device
+//  * local, host visible, coherent)
+//  * @param buffer Pointer to a vk::Vulkan buffer object
+//  * @param size Size of the buffer in byes
+//  * @param data Pointer to the data that should be copied to the buffer after
+//  * creation (optional, if not set, no data is copied over)
+//  *
+//  * @return VK_SUCCESS if buffer handle and memory have been created and
+//  * (optionally passed) data has been copied
+//  */
+// VkResult VKDevice::createBuffer(VkBufferUsageFlags usageFlags,
+//                                 VkMemoryPropertyFlags memoryPropertyFlags,
+//                                 vks::Buffer* buffer, VkDeviceSize size,
+//                                 void* data) {
+//   buffer->device = m_logical_device;
 
-  // Create the buffer handle
-  VkBufferCreateInfo bufferCreateInfo =
-      vks::initializers::bufferCreateInfo(usageFlags, size);
-  VK_CHECK_RESULT(vkCreateBuffer(m_logical_device, &bufferCreateInfo, nullptr,
-                                 &buffer->buffer));
+//   // Create the buffer handle
+//   VkBufferCreateInfo bufferCreateInfo =
+//       vks::initializers::bufferCreateInfo(usageFlags, size);
+//   VK_CHECK_RESULT(vkCreateBuffer(m_logical_device, &bufferCreateInfo,
+//   nullptr,
+//                                  &buffer->buffer));
 
-  // Create the memory backing up the buffer handle
-  VkMemoryRequirements memReqs;
-  VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-  vkGetBufferMemoryRequirements(m_logical_device, buffer->buffer, &memReqs);
-  memAlloc.allocationSize = memReqs.size;
-  // Find a memory type index that fits the properties of the buffer
-  memAlloc.memoryTypeIndex =
-      getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
-  VK_CHECK_RESULT(
-      vkAllocateMemory(m_logical_device, &memAlloc, nullptr, &buffer->memory));
+//   // Create the memory backing up the buffer handle
+//   VkMemoryRequirements memReqs;
+//   VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+//   vkGetBufferMemoryRequirements(m_logical_device, buffer->buffer, &memReqs);
+//   memAlloc.allocationSize = memReqs.size;
+//   // Find a memory type index that fits the properties of the buffer
+//   memAlloc.memoryTypeIndex =
+//       getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+//   VK_CHECK_RESULT(
+//       vkAllocateMemory(m_logical_device, &memAlloc, nullptr,
+//       &buffer->memory));
 
-  buffer->alignment = memReqs.alignment;
-  buffer->size = size;
-  buffer->usageFlags = usageFlags;
-  buffer->memoryPropertyFlags = memoryPropertyFlags;
+//   buffer->alignment = memReqs.alignment;
+//   buffer->size = size;
+//   buffer->usageFlags = usageFlags;
+//   buffer->memoryPropertyFlags = memoryPropertyFlags;
 
-  // If a pointer to the buffer data has been passed, map the buffer and copy
-  // over the data
-  if (data != nullptr) {
-    VK_CHECK_RESULT(buffer->map());
-    memcpy(buffer->mapped, data, size);
-    if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
-      buffer->flush();
+//   // If a pointer to the buffer data has been passed, map the buffer and copy
+//   // over the data
+//   if (data != nullptr) {
+//     VK_CHECK_RESULT(buffer->map());
+//     memcpy(buffer->mapped, data, size);
+//     if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+//       buffer->flush();
 
-    buffer->unmap();
-  }
+//     buffer->unmap();
+//   }
 
-  // Initialize a default descriptor that covers the whole buffer size
-  buffer->setupDescriptor();
+//   // Initialize a default descriptor that covers the whole buffer size
+//   buffer->setupDescriptor();
 
-  // Attach the memory to the buffer object
-  return buffer->bind();
-}
+//   // Attach the memory to the buffer object
+//   return buffer->bind();
+// }
 
-/**
- * Copy buffer data from src to dst using VkCmdCopyBuffer
- *
- * @param src Pointer to the source buffer to copy from
- * @param dst Pointer to the destination buffer to copy tp
- * @param queue Pointer
- * @param copyRegion (Optional) Pointer to a copy region, if NULL, the whole
- * buffer is copied
- *
- * @note Source and destionation pointers must have the approriate transfer
- * usage flags set (TRANSFER_SRC / TRANSFER_DST)
- */
-void VKDevice::copyBuffer(vks::Buffer* src, vks::Buffer* dst, VkQueue queue,
-                          VkBufferCopy* copyRegion) {
-  assert(dst->size <= src->size);
-  assert(src->buffer);
-  VKCommandBuffer copyCmd;
-  createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, &copyCmd, 1, true);
-  VkBufferCopy bufferCopy{};
-  if (copyRegion == nullptr) {
-    bufferCopy.size = src->size;
-  } else {
-    bufferCopy = *copyRegion;
-  }
-  vkCmdCopyBuffer(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
-  flushCommandBuffer(copyCmd, queue);
-}
+// /**
+//  * Copy buffer data from src to dst using VkCmdCopyBuffer
+//  *
+//  * @param src Pointer to the source buffer to copy from
+//  * @param dst Pointer to the destination buffer to copy tp
+//  * @param queue Pointer
+//  * @param copyRegion (Optional) Pointer to a copy region, if NULL, the whole
+//  * buffer is copied
+//  *
+//  * @note Source and destionation pointers must have the approriate transfer
+//  * usage flags set (TRANSFER_SRC / TRANSFER_DST)
+//  */
+// void VKDevice::copyBuffer(vks::Buffer* src, vks::Buffer* dst, VkQueue queue,
+//                           VkBufferCopy* copyRegion) {
+//   assert(dst->size <= src->size);
+//   assert(src->buffer);
+//   VkCommandBuffer copyCmd;
+//   createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, &copyCmd, 1, true);
+//   VkBufferCopy bufferCopy{};
+//   if (copyRegion == nullptr) {
+//     bufferCopy.size = src->size;
+//   } else {
+//     bufferCopy = *copyRegion;
+//   }
+//   vkCmdCopyBuffer(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
+//   flushCommandBuffer(copyCmd, queue);
+// }
 
 /**
  * Create a command pool for allocation command buffers from
@@ -387,7 +390,7 @@ VkCommandPool VKDevice::createCommandPool(
  */
 void VKDevice::createCommandBuffer(VkCommandBufferLevel level,
                                    VkCommandPool pool,
-                                   VKCommandBuffer* pBuffers,
+                                   VkCommandBuffer* pBuffers,
                                    uint32_t commandBufferCount, bool begin) {
   VkCommandBufferAllocateInfo cmdBufAllocateInfo =
       vks::initializers::commandBufferAllocateInfo(pool, level,
@@ -402,7 +405,6 @@ void VKDevice::createCommandBuffer(VkCommandBufferLevel level,
       VK_CHECK_RESULT(vkBeginCommandBuffer(pBuffers[i], &cmdBufInfo));
     }
   }
-  return cmdBuffer;
 }
 
 /**
@@ -461,7 +463,7 @@ void VKDevice::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue,
  */
 uint32_t VKDevice::getMemoryType(uint32_t typeBits,
                                  VkMemoryPropertyFlags properties,
-                                 VkBool32* memTypeFound = nullptr) {
+                                 VkBool32* memTypeFound) {
   for (uint32_t i = 0; i < m_memory_properties.memoryTypeCount; i++) {
     if ((typeBits & 1) == 1) {
       if ((m_memory_properties.memoryTypes[i].propertyFlags & properties) ==

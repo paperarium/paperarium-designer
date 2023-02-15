@@ -1,12 +1,13 @@
-# Use recommended CMake version and initialize project
+# From: Blender CMakeLists.txt
 # set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/lib/vcpkg/scripts/buildsystems/vcpkg.cmake)
 cmake_minimum_required(VERSION 3.5)
 project(PaperariumDesign VERSION 0.1 LANGUAGES CXX)
-
-# Add resource subdirectories
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set CMake variables
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Turn on Qt-related auto compiler options
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -20,21 +21,6 @@ add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 add_definitions(-DUSE_STD_FILESYSTEM)  # For Old Compilers as GCC 7 change to -DUSE_STD_EXPERIMENTAL_FILESYSTEM
 add_definitions(-D_USE_MATH_DEFINES)
 add_definitions(-DPROJECT_ABSOLUTE_PATH="${PROJECT_SOURCE_DIR}")
-
-# Include Qt packages
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Gui)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Gui)
-# Include ImGui for GUIs in Vulkan
-find_package(imgui REQUIRED)
-# Include Vulkan so we can determine how to bundle
-find_package(Vulkan REQUIRED COMPONENTS glslc)
-# Grab the STB image aug header
-find_path(STB_INCLUDE_DIRS "stb_image.h")
-
-# Add the resources directory for compiling shaders
-add_subdirectory(resources)
-
-# ------------------------ ADD COMPILER DEFINITIONS -------------------------- #
 
 # Set target definitions
 if(UNIX AND NOT APPLE)
@@ -111,6 +97,27 @@ elseif(APPLE)
     # set(ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES} "-framework AppKit" "-framework QuartzCore")
 endif(WIN32)
 
+# -----------------------------------------------------------------------------
+# Set policy
+
+# see "cmake --help-policy CMP0100"
+# So AUTOMOC works on .hh files
+cmake_policy(SET CMP0100 NEW)
+
+# this starts out unset
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/build_files/cmake/platform")
+
+# Include Qt packages
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Gui)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Gui)
+# Locate all the required packages
+find_package(imgui REQUIRED)                        # ImGui
+find_package(ASSIMP REQUIRED)                       # ASSIMP
+find_package(GLM REQUIRED)                          # GLM
+find_package(Vulkan REQUIRED COMPONENTS glslc)      # Vulkan
+# Get include dirs from vcpkg for packages
+find_path(GLM_INCLUDE_DIRS "glm/")
+
 # Set preprocessor defines
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNOMINMAX -D_USE_MATH_DEFINES")
 
@@ -120,134 +127,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Compiler specific stuff
-if (MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
-elseif (APPLE)
-    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc -xobjective-c++")
-endif (MSVC)
-
-# find XCB on Linux systems
-if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    message("Linux build needs libxcb-dev.")
-    include(FindPkgConfig)
-    pkg_check_modules(XCB xcb)
-    if (XCB_FOUND)
-        message("Found XCB ${XCB_LDFLAGS}")
-    else()
-        message("You may need to install libxcb-dev!")
-    endif()
-endif()
-
-# --------------------------------- SOURCES --------------------------------- #
-
-# header files
-set(PAPERARIUM_DESIGN_HEADERS
-    include/example/01_statictriangle/StaticTriangle.h
-    include/example/01_statictriangle/objects/Triangle.h
-    include/example/01_statictriangle/objects/TriangleShader.h
-    include/example/01_statictriangle/objects/TriangleUniform.h
-    include/example/02_assimpmodel/AssimpModel.h
-    include/example/ThirdPersonEngine.h
-    include/vk/common/base_template.h
-    include/vk/common/render_common.h
-    include/vk/common/vertex_struct.h
-    include/vk/common/vulkan_macro.h
-    include/vk/template/camera/ShadowCamera.h
-    include/vk/template/camera/ThirdPersonCamera.h
-    include/vk/template/camera/UniformCamera.h
-    include/vk/template/mesh/AssimpObject.h
-    include/vk/template/mesh/MeshObject.h
-    include/vk/template/mesh/VulkanCube.h
-    include/vk/template/mesh/VulkanPlane.h
-    include/vk/template/texture/VulkanTexture.h
-    include/vk/template/texture/VulkanTexture2D.h
-    include/vk/utils/keycodes.hpp
-    include/vk/utils/VulkanAndroid.h
-    include/vk/utils/VulkanBuffer.hpp
-    include/vk/utils/VulkanDebug.h
-    include/vk/utils/VulkanDevice.hpp
-    include/vk/utils/VulkanInitializers.hpp
-    include/vk/utils/VulkanSwapChain.h
-    include/vk/utils/VulkanTools.h
-    include/vk/utils/VulkanQtTools.h
-    include/vk/utils/VulkanUIOverlay.h
-    include/vk/QVulkanWindow.h
-    include/vk/VkObject.h
-    include/vk/VulkanBase.h
-    include/vk/VulkanBaseEngine.h
-    include/vk/VulkanBuffer.h
-    include/vk/VulkanContext.h
-    include/vk/VulkanDescriptorSet.h
-    include/vk/VulkanFrameBuffer.h
-    include/vk/VulkanPipelines.h
-    include/vk/VulkanRenderPass.h
-    include/vk/VulkanShader.h
-    include/vk/VulkanVertexDescriptions.h
-    include/mainwindow.h
-    ${STB_INCLUDE_DIRS}
-)
-
-# source files
-set(PAPERARIUM_DESIGN_SRCS
-    src/example/01_statictriangle/StaticTriangle.cpp
-    src/example/01_statictriangle/objects/Triangle.cpp
-    src/example/01_statictriangle/objects/TriangleShader.cpp
-    src/example/01_statictriangle/objects/TriangleUniform.cpp
-    src/example/02_assimpmodel/AssimpModel.cpp
-    src/example/ThirdPersonEngine.cpp
-    src/vk/template/camera/ShadowCamera.cpp
-    src/vk/template/camera/UniformCamera.cpp
-    src/vk/template/mesh/AssimpObject.cpp
-    src/vk/template/mesh/MeshObject.cpp
-    src/vk/template/mesh/VulkanCube.cpp
-    src/vk/template/mesh/VulkanPlane.cpp
-    src/vk/template/texture/VulkanTexture2D.cpp
-    src/vk/QVulkanWindow.cpp
-    src/vk/VulkanBase.cpp
-    src/vk/VulkanBaseEngine.cpp
-    src/vk/VulkanBuffer.cpp
-    src/vk/VulkanDescriptorSet.cpp
-    src/vk/VulkanFrameBuffer.cpp
-    src/vk/VulkanPipelines.cpp
-    src/vk/VulkanQtTools.cpp
-    src/vk/VulkanRenderPass.cpp
-    src/vk/VulkanShader.cpp
-    src/vk/VulkanSwapChain.cpp
-    src/vk/VulkanTools.cpp
-    src/vk/VulkanUIOverlay.cpp
-    src/mainwindow.cpp
-)
-
-# Qt UI files
-set(PAPERARIUM_DESIGN_UIS
-    ui/mainwindow.ui
-)
-
-# localization files
-set(PAPERARIUM_DESIGN_TSS
-    lang/PaperariumDesign_en_US.ts
-)
-
-# resource files
-set(PAPERARIUM_DESIGN_RESOURCES
-    resources/shaders/shaders.qrc
-    resources/fonts/fonts.qrc)
-
-
-# Concatenate all into project sources
-set(PAPERARIUM_DESIGN_ALL_SOURCES
-    main.cpp
-    ${PAPERARIUM_DESIGN_SRCS}
-    ${PAPERARIUM_DESIGN_HEADERS}
-    ${PAPERARIUM_DESIGN_UIS}
-    ${PAPERARIUM_DESIGN_TSS}
-    ${PAPERARIUM_DESIGN_RESOURCES})
 
 # ------------------------------- EXECUTION -------------------------------- #
+
+# begin traversal of sub-directories
+add_subdirectory(source)
 
 # Add executable as PaperariumDesign
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -257,43 +141,6 @@ else()
     add_executable(PaperariumDesign ${PAPERARIUM_DESIGN_ALL_SOURCES})
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${PAPERARIUM_DESIGN_TSS})
 endif()
-
-# --------------------------- INCLUDE LIBRARIES ---------------------------- #
-
-# Locate all the required packages
-find_package(ASSIMP REQUIRED)                       # ASSIMP
-find_package(GLM REQUIRED)                          # GLM
-
-# local includes are all in the include/ folder
-target_include_directories(
-    PaperariumDesign
-    PRIVATE
-    include
-    include/example
-    include/vk
-    include/vk/common
-    include/vk/template
-    include/vk/utils
-    ${Vulkan_INCLUDE_DIRS}
-    ${ASSIMP_INCLUDE_DIRS}
-    ${GLM_INCLUDE_DIRS}
-    ${IMGUI_INCLUDE_DIRS}
-    ${ADDITIONAL_INCLUDE_DIRS}
-    ${STB_INCLUDE_DIRS})
-
-# ----------------------------- LINK LIBRARIES ------------------------------ #
-
-# link all our libraries
-target_link_libraries(
-    PaperariumDesign
-    PRIVATE
-    Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::Gui
-    imgui::imgui
-    ${ASSIMP_LIBRARIES}
-    ${Vulkan_LIBRARIES}
-    ${GLM_LIBRARIES}
-    ${ADDITIONAL_LIBRARIES})
 
 # ---------------------------- BUNDLE BUILD + INSTALL ----------------------- #
 

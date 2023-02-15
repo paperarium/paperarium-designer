@@ -16,25 +16,9 @@ namespace vks {
 
 /** @brief Creates the platform specific surface abstraction of the native
  * platform window used for presentation */
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-void VKSwapchain::initSurface(void* platformHandle, void* platformWindow)
-#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-void VKSwapchain::initSurface(ANativeWindow* window)
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-void VKSwapchain::initSurface(IDirectFB* dfb, IDirectFBSurface* window)
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-void VKSwapchain::initSurface(wl_display* display, wl_surface* window)
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-void VKSwapchain::initSurface(xcb_connection_t* connection, xcb_window_t window)
-#elif (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
-void VKSwapchain::initSurface(void* view)
-#elif (defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT))
-void VKSwapchain::initSurface(uint32_t width, uint32_t height)
-#endif
-{
+void VKSwapchain::initSurface(PLATF_SURF_PARAMS) {
   VkResult err = VK_SUCCESS;
-
-  // Create the os-specific surface
+// Create the os-specific surface
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
   VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -42,46 +26,41 @@ void VKSwapchain::initSurface(uint32_t width, uint32_t height)
   surfaceCreateInfo.hwnd = (HWND)platformWindow;
   err =
       vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface);
-#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-  VkAndroidSurfaceCreateInfoKHR surfaceCreateInfo = {};
-  surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-  surfaceCreateInfo.window = window;
-  err = vkCreateAndroidSurfaceKHR(instance, &surfaceCreateInfo, NULL, &surface);
 #elif defined(VK_USE_PLATFORM_IOS_MVK)
   VkIOSSurfaceCreateInfoMVK surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK;
   surfaceCreateInfo.pNext = NULL;
   surfaceCreateInfo.flags = 0;
-  surfaceCreateInfo.pView = view;
+  surfaceCreateInfo.pView = platformView;
   err = vkCreateIOSSurfaceMVK(instance, &surfaceCreateInfo, nullptr, &surface);
 #elif defined(VK_USE_PLATFORM_MACOS_MVK)
   VkMacOSSurfaceCreateInfoMVK surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
   surfaceCreateInfo.pNext = NULL;
   surfaceCreateInfo.flags = 0;
-  surfaceCreateInfo.pView = view;
+  surfaceCreateInfo.pView = platformView;
   err = vkCreateMacOSSurfaceMVK(instance, &surfaceCreateInfo, NULL, &surface);
 #elif defined(_DIRECT2DISPLAY)
-  createDirect2DisplaySurface(width, height);
+  createDirect2DisplaySurface(platformWidth, platformHeight);
 #elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
   VkDirectFBSurfaceCreateInfoEXT surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_DIRECTFB_SURFACE_CREATE_INFO_EXT;
-  surfaceCreateInfo.dfb = dfb;
-  surfaceCreateInfo.surface = window;
+  surfaceCreateInfo.dfb = platformDfb;
+  surfaceCreateInfo.surface = platformDfbSurface;
   err = vkCreateDirectFBSurfaceEXT(instance, &surfaceCreateInfo, nullptr,
                                    &surface);
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
   VkWaylandSurfaceCreateInfoKHR surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
-  surfaceCreateInfo.display = display;
-  surfaceCreateInfo.surface = window;
+  surfaceCreateInfo.display = platformDisplay;
+  surfaceCreateInfo.surface = platformSurface;
   err = vkCreateWaylandSurfaceKHR(instance, &surfaceCreateInfo, nullptr,
                                   &surface);
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
   VkXcbSurfaceCreateInfoKHR surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-  surfaceCreateInfo.connection = connection;
-  surfaceCreateInfo.window = window;
+  surfaceCreateInfo.connection = platformConnection;
+  surfaceCreateInfo.window = platformWindow;
   err = vkCreateXcbSurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface);
 #elif defined(VK_USE_PLATFORM_HEADLESS_EXT)
   VkHeadlessSurfaceCreateInfoEXT surfaceCreateInfo = {};
@@ -198,8 +177,7 @@ void VKSwapchain::initSurface(uint32_t width, uint32_t height)
       colorSpace = surfaceFormats[0].colorSpace;
     }
   }
-}  // namespace
-   // VKSwapchain::initSurface(void*platformHandle,void*platformWindow)
+}
 
 /**
  * Set instance, physical and logical device to use for the swapchain and get
@@ -636,5 +614,6 @@ void VKSwapchain::createDirect2DisplaySurface(uint32_t width, uint32_t height) {
   delete[] pDisplayProperties;
   delete[] pPlaneProperties;
 }
-}
 #endif
+
+}  // namespace vks

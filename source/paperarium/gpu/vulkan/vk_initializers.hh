@@ -11,7 +11,7 @@
 #ifndef VK_INITIALIZERS_HH
 #define VK_INITIALIZERS_HH
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 #include <vector>
 
 namespace vks {

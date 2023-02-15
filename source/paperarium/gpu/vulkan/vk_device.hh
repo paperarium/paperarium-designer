@@ -10,13 +10,16 @@
 #define VK_DEVICE_HH
 
 #include "vulkan/vulkan.h"
+#include <algorithm>
+#include <string>
+#include <vector>
 
-namespace vks {
+namespace paperarium::gpu {
 
 class VKDevice {
  public:
   /**  @brief Typecast to VkDevice */
-  operator VkDevice() { return logicalDevice; }
+  operator VkDevice() { return m_logical_device; }
 
   /**
    * @brief Constructs a logical representation of a physical Vulkan Device
@@ -57,61 +60,66 @@ class VKDevice {
       VkQueueFlags requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT |
                                          VK_QUEUE_COMPUTE_BIT);
 
-  /**
-   * Create a buffer on the device
-   *
-   * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
-   * uniform buffer)
-   * @param memoryPropertyFlags Memory properties for this buffer (i.e. device
-   * local, host visible, coherent)
-   * @param size Size of the buffer in byes
-   * @param buffer Pointer to the buffer handle acquired by the function
-   * @param memory Pointer to the memory handle acquired by the function
-   * @param data Pointer to the data that should be copied to the buffer after
-   * creation (optional, if not set, no data is copied over)
-   *
-   * @return VK_SUCCESS if buffer handle and memory have been created and
-   * (optionally passed) data has been copied
-   */
-  VkResult createBuffer(VkBufferUsageFlags usageFlags,
-                        VkMemoryPropertyFlags memoryPropertyFlags,
-                        VkDeviceSize size, VkBuffer* buffer,
-                        VkDeviceMemory* memory, void* data = nullptr);
+  // /**
+  //  * Create a buffer on the device
+  //  *
+  //  * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
+  //  * uniform buffer)
+  //  * @param memoryPropertyFlags Memory properties for this buffer (i.e.
+  //  device
+  //  * local, host visible, coherent)
+  //  * @param size Size of the buffer in byes
+  //  * @param buffer Pointer to the buffer handle acquired by the function
+  //  * @param memory Pointer to the memory handle acquired by the function
+  //  * @param data Pointer to the data that should be copied to the buffer
+  //  after
+  //  * creation (optional, if not set, no data is copied over)
+  //  *
+  //  * @return VK_SUCCESS if buffer handle and memory have been created and
+  //  * (optionally passed) data has been copied
+  //  */
+  // VkResult createBuffer(VkBufferUsageFlags usageFlags,
+  //                       VkMemoryPropertyFlags memoryPropertyFlags,
+  //                       VkDeviceSize size, VkBuffer* buffer,
+  //                       VkDeviceMemory* memory, void* data = nullptr);
 
-  /**
-   * Create a buffer on the device
-   *
-   * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
-   * uniform buffer)
-   * @param memoryPropertyFlags Memory properties for this buffer (i.e. device
-   * local, host visible, coherent)
-   * @param buffer Pointer to a vk::Vulkan buffer object
-   * @param size Size of the buffer in byes
-   * @param data Pointer to the data that should be copied to the buffer after
-   * creation (optional, if not set, no data is copied over)
-   *
-   * @return VK_SUCCESS if buffer handle and memory have been created and
-   * (optionally passed) data has been copied
-   */
-  VkResult createBuffer(VkBufferUsageFlags usageFlags,
-                        VkMemoryPropertyFlags memoryPropertyFlags,
-                        vks::Buffer* buffer, VkDeviceSize size,
-                        void* data = nullptr);
+  // /**
+  //  * Create a buffer on the device
+  //  *
+  //  * @param usageFlags Usage flag bitmask for the buffer (i.e. index, vertex,
+  //  * uniform buffer)
+  //  * @param memoryPropertyFlags Memory properties for this buffer (i.e.
+  //  device
+  //  * local, host visible, coherent)
+  //  * @param buffer Pointer to a vk::Vulkan buffer object
+  //  * @param size Size of the buffer in byes
+  //  * @param data Pointer to the data that should be copied to the buffer
+  //  after
+  //  * creation (optional, if not set, no data is copied over)
+  //  *
+  //  * @return VK_SUCCESS if buffer handle and memory have been created and
+  //  * (optionally passed) data has been copied
+  //  */
+  // VkResult createBuffer(VkBufferUsageFlags usageFlags,
+  //                       VkMemoryPropertyFlags memoryPropertyFlags,
+  //                       vks::Buffer* buffer, VkDeviceSize size,
+  //                       void* data = nullptr);
 
-  /**
-   * Copy buffer data from src to dst using VkCmdCopyBuffer
-   *
-   * @param src Pointer to the source buffer to copy from
-   * @param dst Pointer to the destination buffer to copy tp
-   * @param queue Pointer
-   * @param copyRegion (Optional) Pointer to a copy region, if NULL, the whole
-   * buffer is copied
-   *
-   * @note Source and destionation pointers must have the approriate transfer
-   * usage flags set (TRANSFER_SRC / TRANSFER_DST)
-   */
-  void copyBuffer(vks::Buffer* src, vks::Buffer* dst, VkQueue queue,
-                  VkBufferCopy* copyRegion = nullptr);
+  // /**
+  //  * Copy buffer data from src to dst using VkCmdCopyBuffer
+  //  *
+  //  * @param src Pointer to the source buffer to copy from
+  //  * @param dst Pointer to the destination buffer to copy tp
+  //  * @param queue Pointer
+  //  * @param copyRegion (Optional) Pointer to a copy region, if NULL, the
+  //  whole
+  //  * buffer is copied
+  //  *
+  //  * @note Source and destionation pointers must have the approriate transfer
+  //  * usage flags set (TRANSFER_SRC / TRANSFER_DST)
+  //  */
+  // void copyBuffer(vks::Buffer* src, vks::Buffer* dst, VkQueue queue,
+  //                 VkBufferCopy* copyRegion = nullptr);
 
   /**
    * Create a command pool for allocation command buffers from
@@ -142,10 +150,10 @@ class VKDevice {
    * @return A handle to the allocated command buffer
    */
   void createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool,
-                           VKCommandBuffer* pBuffers,
+                           VkCommandBuffer* pBuffers,
                            uint32_t commandBufferCount = 1, bool begin = false);
   void createCommandBuffer(VkCommandBufferLevel level,
-                           VKCommandBuffer* pBuffers,
+                           VkCommandBuffer* pBuffers,
                            uint32_t commandBufferCount = 1,
                            bool begin = false) {
     createCommandBuffer(level, m_command_pool, pBuffers, commandBufferCount,
@@ -266,6 +274,6 @@ class VKDevice {
   } m_queue_family_indices;
 };
 
-}  // namespace vks
+}  // namespace paperarium::gpu
 
 #endif /* VK_DEVICE_HH */

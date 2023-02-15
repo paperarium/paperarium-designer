@@ -8,13 +8,10 @@ set(INC
 
   ../paperkernel)
 
-set(SRC
-  intern/context.c
-
-  PKE_context.h)
+set(SRC )
 
 # create draw library
-add_library(pp_draw SRC)
+add_library(pp_draw ${SRC})
 
 # add includes
-target_include_directories(pp_draw INC)
+target_include_directories(pp_draw PRIVATE ${INC})

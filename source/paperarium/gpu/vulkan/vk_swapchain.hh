@@ -12,7 +12,8 @@
 #ifndef VK_SWAPCHAIN_HH
 #define VK_SWAPCHAIN_HH
 
-#include "VulkanTools.h"
+#include "gpu_common.h"
+#include "vk_tools.h"
 #include <vulkan/vulkan.h>
 #include <assert.h>
 #include <stdio.h>
@@ -59,23 +60,9 @@ class VKSwapchain {
   std::vector<SwapChainBuffer> buffers;
   uint32_t queueNodeIndex = UINT32_MAX;
 
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-  void initSurface(void* platformHandle, void* platformWindow);
-#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-  void initSurface(ANativeWindow* window);
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-  void initSurface(IDirectFB* dfb, IDirectFBSurface* window);
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-  void initSurface(wl_display* display, wl_surface* window);
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-  void initSurface(xcb_connection_t* connection, xcb_window_t window);
-#elif (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
-  void initSurface(void* view);
-#elif (defined(_DIRECT2DISPLAY) || defined(VK_USE_PLATFORM_HEADLESS_EXT))
-  void initSurface(uint32_t width, uint32_t height);
+  void initSurface(PLATF_SURF_PARAMS);
 #if defined(_DIRECT2DISPLAY)
   void createDirect2DisplaySurface(uint32_t width, uint32_t height);
-#endif
 #endif
   void connect(VkInstance instance, VkPhysicalDevice physicalDevice,
                VkDevice device);
